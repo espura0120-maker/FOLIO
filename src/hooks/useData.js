@@ -1,26 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { format, subDays, startOfWeek } from 'date-fns'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/AuthContext'
 
 const today = () => format(new Date(), 'yyyy-MM-dd')
 
 // ── Profile ───────────────────────────────────────────────────────────────────
 export function useProfile() {
-  const [profile, setProfile] = useState(null)
-
-  useEffect(() => {
-    const raw = localStorage.getItem('folio_profile')
-    if (raw) setProfile(JSON.parse(raw))
-    else setProfile({ full_name: '', cal_goal: 2000, weight_unit: 'lbs', currency: 'USD' })
-  }, [])
-
-  function update(patch) {
-    const next = { ...profile, ...patch }
-    setProfile(next)
-    localStorage.setItem('folio_profile', JSON.stringify(next))
-  }
-
-  return { profile: profile || { full_name: '', cal_goal: 2000, weight_unit: 'lbs', currency: 'USD' }, update }
+  const { profile, updateProfile } = useAuth()
+  return { profile: profile || { full_name: '', cal_goal: 2000, weight_unit: 'lbs', currency: 'USD' }, update: updateProfile }
 }
 
 // ── Finance ───────────────────────────────────────────────────────────────────
@@ -183,8 +171,9 @@ export function useWorkouts() {
       .select().single()
     if (error) return
     if (exercises.length > 0) {
-      await supabase.from('exercises')
-        .insert(exercises.map((e, i) => ({ ...e, session_id: s.id, sort_order: i })))
+      await supabase.from('exercises').insert(
+        exercises.map((e, i) => ({ ...e, session_id: s.id, sort_order: i }))
+      )
     }
     await fetch()
   }
