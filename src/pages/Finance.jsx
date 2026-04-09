@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useTransactions } from '@/hooks/useData'
+import { useTransactions, useProfile } from '@/hooks/useData'
 import { Card, CardTitle, StatCard, Grid, Button, ListItem, EmptyState, SectionHeader } from '@/components/shared/UI'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
