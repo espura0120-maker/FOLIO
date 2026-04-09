@@ -1,15 +1,17 @@
 import { format } from 'date-fns'
 import { useNavigate } from 'react-router-dom'
-import { useTransactions, useFoodLogs, useWellness, useWorkouts, useJournal } from '@/hooks/useData'
+import { useTransactions, useFoodLogs, useWellness, useWorkouts, useJournal, useProfile } from '@/hooks/useData'
 import { useProfile } from '@/hooks/useData'
 import { StatCard, Card, CardTitle, Grid, Button, EmptyState } from '@/components/shared/UI'
 
-function fmt(n) { return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
+const SYMBOLS = { EUR: '€', USD: '$', JPY: '¥' }
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const { profile } = useProfile()
   const { balance } = useTransactions()
+  const { profile } = useProfile()
+const fmt = n => (SYMBOLS[profile?.currency] || '€') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const { totalCalories, calGoal, todayLogs } = useFoodLogs()
   const { goals, isCompleted, completedToday } = useWellness()
   const { sessions } = useWorkouts()
