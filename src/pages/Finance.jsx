@@ -3,8 +3,8 @@ import { useTransactions } from '@/hooks/useData'
 import { Card, CardTitle, StatCard, Grid, Button, ListItem, EmptyState, SectionHeader } from '@/components/shared/UI'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
-const CATS = ['Food','Rent','Transport','Health','Entertainment','Salary','Investment','Other']
-const CAT_COLORS = { Food:'#d9644a',Rent:'#8a6ed8',Transport:'#4a7be0',Health:'#3db88a',Entertainment:'#c9993a',Salary:'#3db88a',Investment:'#4a7be0',Other:'#52504d' }
+const CATS = ['Food','Rent','Transport','Health','Entertainment','Salary','Investment','Subscriptions','Loans','Other']
+const CAT_COLORS = { Food:'#d9644a',Rent:'#8a6ed8',Transport:'#4a7be0',Health:'#3db88a',Entertainment:'#c9993a',Salary:'#3db88a',Investment:'#4a7be0',Subscriptions:'#d45499',Loans:'#e8a030',Other:'#52504d' }
 const fmt = n => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const typeColor = t => t === 'income' ? 'var(--teal2)' : t === 'savings' ? 'var(--gold2)' : 'var(--coral2)'
 
@@ -14,11 +14,11 @@ export default function Finance() {
   const [saving, setSaving] = useState(false)
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
 
-  function handleAdd(e) {
+  async function handleAdd(e) {
     e.preventDefault()
     if (!form.description || !form.amount) return
     setSaving(true)
-    add({ ...form, amount: parseFloat(form.amount) })
+    await add({ ...form, amount: parseFloat(form.amount) })
     setForm(f => ({ ...f, description: '', amount: '', notes: '' }))
     setSaving(false)
   }
@@ -65,7 +65,7 @@ export default function Finance() {
             ? <EmptyState icon="📊" message="Add expenses to see breakdown" />
             : <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="cat" tick={{ fill: 'var(--text3)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="cat" tick={{ fill: 'var(--text3)', fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: 'var(--text3)', fontSize: 11 }} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={{ background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 8, color: 'var(--text)', fontSize: 12 }} formatter={v => ['$' + v.toFixed(2)]} />
                   <Bar dataKey="val" radius={[4,4,0,0]}>{chartData.map(e => <Cell key={e.cat} fill={CAT_COLORS[e.cat] || '#52504d'} />)}</Bar>
