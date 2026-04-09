@@ -105,9 +105,21 @@ export function EmptyState({ icon, message }) {
 // ── Grid ──────────────────────────────────────────────────────────────────────
 export function Grid({ cols = 2, gap = 12, children, style }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap, ...style }}>
-      {children}
-    </div>
+    <>
+      <style>{`
+        .folio-grid-${cols} {
+          display: grid;
+          grid-template-columns: repeat(${cols}, minmax(0, 1fr));
+          gap: ${gap}px;
+        }
+        @media (max-width: 640px) {
+          .folio-grid-${cols} { grid-template-columns: 1fr; }
+        }
+      `}</style>
+      <div className={`folio-grid-${cols}`} style={style}>
+        {children}
+      </div>
+    </>
   )
 }
 
