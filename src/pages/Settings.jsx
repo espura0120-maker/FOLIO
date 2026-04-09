@@ -1,26 +1,38 @@
-import { useState } from 'react'
-import { useProfile } from '@/hooks/useData'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/AuthContext'
 import { Card, CardTitle, Button, SectionHeader, Grid } from '@/components/shared/UI'
 
 export default function Settings() {
-  const { profile, update } = useProfile()
-  const { user } = useAuth()
+  const { user, profile, updateProfile } = useAuth()
   const [form, setForm] = useState({
-    full_name:   profile?.full_name   || '',
-    cal_goal:    profile?.cal_goal    || 2000,
-    weight_unit: profile?.weight_unit || 'lbs',
-    currency:    profile?.currency    || 'USD',
+    full_name:   '',
+    cal_goal:    2000,
+    weight_unit: 'lbs',
+    currency:    'EUR',
   })
   const [saved, setSaved] = useState(false)
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
 
+  useEffect(() => {
+    if (profile) {
+      setForm({
+        full_name:   profile.full_name   || '',
+        cal_goal:    profile.cal_goal    || 2000,
+        weight_unit: profile.weight_unit || 'lbs',
+        currency:    profile.currency    || 'EUR',
+      })
+    }
+  }, [profile])
+
   async function handleSave(e) {
     e.preventDefault()
-    await update(form)
+    await updateProfile(form)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
+
+  const CURRENCY_SYMBOLS = { EUR: '€', USD: '$', JPY: '¥' }
+  const curr = form.currency || 'EUR'
 
   return (
     <div className="fade-up">
@@ -45,24 +57,60 @@ export default function Settings() {
 
           <Card>
             <CardTitle>Preferences</CardTitle>
-            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+              {/* Currency */}
+              <div>
+                <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 8 }}>Currency</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[['EUR','€ Euro'],['USD','$ Dollar'],['JPY','¥ Yen']].map(([code, label]) => (
+                    <button key={code} type="button" onClick={() => setForm(f => ({ ...f, currency: code }))} style={{
+                      flex: 1, padding: '10px 6px', border: `1px solid ${form.currency === code ? 'var(--gold)' : 'var(--border2)'}`,
+                      borderRadius: 'var(--radius-sm)', background: form.currency === code ? 'rgba(201,153,58,0.12)' : 'var(--bg3)',
+                      color: form.currency === code ? 'var(--gold2)' : 'var(--text2)',
+                      fontSize: 13, fontWeight: form.currency === code ? 500 : 400,
+                      cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                    }}>
+                      <span style={{ fontSize: 20 }}>{code === 'EUR' ? '€' : code === 'USD' ? '$' : '¥'}</span>
+                      <span>{label.split(' ')[1]}</span>
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>
+                  Currently: <span style={{ color: 'var(--gold2)', fontFamily: 'JetBrains Mono, monospace' }}>{CURRENCY_SYMBOLS[curr]} {curr}</span>
+                </div>
+              </div>
+
+              {/* Weight unit */}
+              <div>
+                <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 8 }}>Weight unit</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[['kg','Kilograms'],['lbs','Pounds']].map(([unit, label]) => (
+                    <button key={unit} type="button" onClick={() => setForm(f => ({ ...f, weight_unit: unit }))} style={{
+                      flex: 1, padding: '10px 6px', border: `1px solid ${form.weight_unit === unit ? 'var(--teal)' : 'var(--border2)'}`,
+                      borderRadius: 'var(--radius-sm)', background: form.weight_unit === unit ? 'rgba(61,184,138,0.12)' : 'var(--bg3)',
+                      color: form.weight_unit === unit ? 'var(--teal2)' : 'var(--text2)',
+                      fontSize: 13, fontWeight: form.weight_unit === unit ? 500 : 400,
+                      cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                    }}>
+                      <span style={{ fontSize: 16, fontFamily: 'JetBrains Mono, monospace' }}>{unit}</span>
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>
+                  Currently: <span style={{ color: 'var(--teal2)', fontFamily: 'JetBrains Mono, monospace' }}>{form.weight_unit}</span>
+                </div>
+              </div>
+
+              {/* Calorie goal */}
               <div>
                 <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>Daily calorie goal</label>
                 <input type="number" value={form.cal_goal} onChange={set('cal_goal')} min={500} max={9000} />
               </div>
-              <div>
-                <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>Weight unit</label>
-                <select value={form.weight_unit} onChange={set('weight_unit')}>
-                  <option value="lbs">Pounds (lbs)</option>
-                  <option value="kg">Kilograms (kg)</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>Currency</label>
-                <select value={form.currency} onChange={set('currency')}>
-                  {['USD','EUR','GBP','CAD','AUD','JPY','CHF'].map(c => <option key={c}>{c}</option>)}
-                </select>
-              </div>
+
               <Button type="submit" variant="gold">{saved ? '✓ Saved!' : 'Save Preferences'}</Button>
             </form>
           </Card>
