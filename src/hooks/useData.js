@@ -13,10 +13,12 @@ export function useProfile() {
 
 // ── Finance ───────────────────────────────────────────────────────────────────
 export function useTransactions() {
+  const { user } = useAuth()
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(true)
 
   const fetch = useCallback(async () => {
+    if (!user) return
     setLoading(true)
     const { data } = await supabase
       .from('transactions')
@@ -25,14 +27,14 @@ export function useTransactions() {
       .order('created_at', { ascending: false })
     setTransactions(data || [])
     setLoading(false)
-  }, [])
+  }, [user])
 
   useEffect(() => { fetch() }, [fetch])
 
   async function add(payload) {
     const { data, error } = await supabase
       .from('transactions')
-      .insert({ ...payload, date: today() })
+      .insert({ ...payload, user_id: user.id, date: today() })
       .select().single()
     if (!error) setTransactions(prev => [data, ...prev])
   }
@@ -55,11 +57,13 @@ export function useTransactions() {
 
 // ── Nutrition ─────────────────────────────────────────────────────────────────
 export function useFoodLogs() {
+  const { user } = useAuth()
   const { profile } = useProfile()
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
 
   const fetch = useCallback(async () => {
+    if (!user) return
     setLoading(true)
     const { data } = await supabase
       .from('food_logs')
@@ -68,14 +72,14 @@ export function useFoodLogs() {
       .order('created_at', { ascending: false })
     setLogs(data || [])
     setLoading(false)
-  }, [])
+  }, [user])
 
   useEffect(() => { fetch() }, [fetch])
 
   async function add(payload) {
     const { data, error } = await supabase
       .from('food_logs')
-      .insert({ ...payload, date: today() })
+      .insert({ ...payload, user_id: user.id, date: today() })
       .select().single()
     if (!error) setLogs(prev => [data, ...prev])
   }
@@ -95,11 +99,13 @@ export function useFoodLogs() {
 
 // ── Wellness ──────────────────────────────────────────────────────────────────
 export function useWellness() {
+  const { user } = useAuth()
   const [goals, setGoals]       = useState([])
   const [checkins, setCheckins] = useState([])
   const [loading, setLoading]   = useState(true)
 
   const fetch = useCallback(async () => {
+    if (!user) return
     setLoading(true)
     const [{ data: g }, { data: c }] = await Promise.all([
       supabase.from('wellness_goals').select('*').eq('is_active', true).order('sort_order'),
@@ -108,14 +114,14 @@ export function useWellness() {
     setGoals(g || [])
     setCheckins(c || [])
     setLoading(false)
-  }, [])
+  }, [user])
 
   useEffect(() => { fetch() }, [fetch])
 
   async function addGoal(payload) {
     const { data, error } = await supabase
       .from('wellness_goals')
-      .insert({ ...payload, sort_order: goals.length, is_active: true })
+      .insert({ ...payload, user_id: user.id, sort_order: goals.length, is_active: true })
       .select().single()
     if (!error) setGoals(prev => [...prev, data])
   }
@@ -133,7 +139,7 @@ export function useWellness() {
     } else {
       const { data, error } = await supabase
         .from('wellness_checkins')
-        .insert({ goal_id: goalId, date: today() })
+        .insert({ user_id: user.id, goal_id: goalId, date: today() })
         .select().single()
       if (!error) setCheckins(prev => [...prev, data])
     }
@@ -147,10 +153,12 @@ export function useWellness() {
 
 // ── Workouts ──────────────────────────────────────────────────────────────────
 export function useWorkouts() {
+  const { user } = useAuth()
   const [sessions, setSessions] = useState([])
   const [loading, setLoading]   = useState(true)
 
   const fetch = useCallback(async () => {
+    if (!user) return
     setLoading(true)
     const { data } = await supabase
       .from('workout_sessions')
@@ -160,19 +168,19 @@ export function useWorkouts() {
       .limit(50)
     setSessions(data || [])
     setLoading(false)
-  }, [])
+  }, [user])
 
   useEffect(() => { fetch() }, [fetch])
 
   async function add({ session, exercises }) {
     const { data: s, error } = await supabase
       .from('workout_sessions')
-      .insert({ ...session, date: today() })
+      .insert({ ...session, user_id: user.id, date: today() })
       .select().single()
     if (error) return
     if (exercises.length > 0) {
       await supabase.from('exercises').insert(
-        exercises.map((e, i) => ({ ...e, session_id: s.id, sort_order: i }))
+        exercises.map((e, i) => ({ ...e, user_id: user.id, session_id: s.id, sort_order: i }))
       )
     }
     await fetch()
@@ -192,10 +200,12 @@ export function useWorkouts() {
 
 // ── Journal ───────────────────────────────────────────────────────────────────
 export function useJournal() {
+  const { user } = useAuth()
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
 
   const fetch = useCallback(async () => {
+    if (!user) return
     setLoading(true)
     const { data } = await supabase
       .from('journal_entries')
@@ -205,14 +215,14 @@ export function useJournal() {
       .limit(100)
     setEntries(data || [])
     setLoading(false)
-  }, [])
+  }, [user])
 
   useEffect(() => { fetch() }, [fetch])
 
   async function add(payload) {
     const { data, error } = await supabase
       .from('journal_entries')
-      .insert({ ...payload, date: today() })
+      .insert({ ...payload, user_id: user.id, date: today() })
       .select().single()
     if (!error) setEntries(prev => [data, ...prev])
   }
