@@ -5,7 +5,6 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 
 const CATS = ['Food','Rent','Transport','Health','Entertainment','Salary','Investment','Subscriptions','Loans','Other']
 const CAT_COLORS = { Food:'#d9644a',Rent:'#8a6ed8',Transport:'#4a7be0',Health:'#3db88a',Entertainment:'#c9993a',Salary:'#3db88a',Investment:'#4a7be0',Subscriptions:'#d45499',Loans:'#e8a030',Other:'#52504d' }
-const fmt = n => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const typeColor = t => t === 'income' ? 'var(--teal2)' : t === 'savings' ? 'var(--gold2)' : 'var(--coral2)'
 
 export default function Finance() {
