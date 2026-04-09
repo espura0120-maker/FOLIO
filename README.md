@@ -147,3 +147,5 @@ Open http://localhost:5173
 - localStorage for all data persistence
 - GitHub Actions for automatic deployment
 - Anthropic Claude API for food photo analysis (optional)
+
+<!-- updated -->
