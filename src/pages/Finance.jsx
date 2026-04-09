@@ -10,6 +10,9 @@ const typeColor = t => t === 'income' ? 'var(--teal2)' : t === 'savings' ? 'var(
 
 export default function Finance() {
   const { transactions, add, remove, income, expenses, savings, balance, byCategory } = useTransactions()
+  const { profile } = useProfile()
+const SYMBOLS = { EUR: '€', USD: '$', JPY: '¥' }
+const fmt = n => (SYMBOLS[profile?.currency] || '€') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const [form, setForm] = useState({ type: 'expense', description: '', amount: '', category: 'Food', notes: '' })
   const [saving, setSaving] = useState(false)
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
