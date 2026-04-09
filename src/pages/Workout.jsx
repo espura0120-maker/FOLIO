@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { useWorkouts } from '@/hooks/useData'
+import { useWorkouts, useProfile } from '@/hooks/useData'
 import { Card, CardTitle, Grid, Button, ListItem, EmptyState, SectionHeader, StatCard } from '@/components/shared/UI'
 
 const TYPES = ['Strength','Cardio','HIIT','Yoga','Sports','Other']
 
 export default function Workout() {
   const { sessions, add, remove, sessionsThisWeek, totalVolume } = useWorkouts()
+  const { profile } = useProfile()
+const weightUnit = profile?.weight_unit || 'kg'
   const [saving, setSaving] = useState(false)
   const [session, setSession] = useState({ name: '', type: 'Strength', duration_mins: '', notes: '' })
   const [exercises, setExercises] = useState([{ name: '', sets: '', reps: '', weight: '' }])
@@ -33,7 +35,7 @@ export default function Workout() {
       <Grid cols={3} style={{ marginBottom: 16 }}>
         <StatCard label="Total Sessions" value={sessions.length}  color="var(--purple2)" />
         <StatCard label="This Week"      value={sessionsThisWeek} color="var(--blue2)" />
-        <StatCard label="Total Volume"   value={`${totalVolume.toLocaleString()} lbs`} color="var(--teal2)" />
+        <StatCard label="Total Volume"   value={`${totalVolume.toLocaleString()} ${weightUnit}`} color="var(--teal2)" />
       </Grid>
 
       <Card style={{ marginBottom: 16 }}>
