@@ -197,6 +197,19 @@ export function useWorkouts() {
 
   return { sessions, loading, add, remove, sessionsThisWeek, totalVolume }
 }
+async function add({ session, exercises }) {
+  const { data: s, error } = await supabase
+    .from('workout_sessions')
+    .insert({ ...session, user_id: user.id, date: today() })
+    .select().single()
+  if (error) return
+  if (exercises.length > 0) {
+    await supabase.from('exercises').insert(
+      exercises.map((e, i) => ({ ...e, user_id: user.id, session_id: s.id, sort_order: i }))
+    )
+  }
+  await fetch()
+}
 
 // ── Journal ───────────────────────────────────────────────────────────────────
 export function useJournal() {
