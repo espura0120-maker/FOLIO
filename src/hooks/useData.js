@@ -109,7 +109,7 @@ export function useWellness() {
     setLoading(true)
     const [{ data: g }, { data: c }] = await Promise.all([
       supabase.from('wellness_goals').select('*').eq('is_active', true).order('sort_order'),
-      supabase.from('wellness_checkins').select('*').gte('date', format(subDays(new Date(), 30), 'yyyy-MM-dd'))
+      supabase.from('wellness_checkins').select('*').gte('date', format(subDays(new Date(), 60), 'yyyy-MM-dd'))
     ])
     setGoals(g || [])
     setCheckins(c || [])
@@ -131,15 +131,15 @@ export function useWellness() {
     setGoals(prev => prev.filter(g => g.id !== id))
   }
 
-  async function toggle(goalId) {
-    const existing = checkins.find(c => c.goal_id === goalId && c.date === today())
+  async function toggle(goalId, date = today()) {
+    const existing = checkins.find(c => c.goal_id === goalId && c.date === date)
     if (existing) {
       await supabase.from('wellness_checkins').delete().eq('id', existing.id)
       setCheckins(prev => prev.filter(c => c.id !== existing.id))
     } else {
       const { data, error } = await supabase
         .from('wellness_checkins')
-        .insert({ user_id: user.id, goal_id: goalId, date: today() })
+        .insert({ user_id: user.id, goal_id: goalId, date: date })
         .select().single()
       if (!error) setCheckins(prev => [...prev, data])
     }
@@ -175,7 +175,7 @@ export function useWorkouts() {
   async function add({ session, exercises }) {
     const { data: s, error } = await supabase
       .from('workout_sessions')
-      .insert({ ...session, user_id: user.id, date: today() })
+      .insert({ ...session, user_id: user.id })
       .select().single()
     if (error) return
     if (exercises.length > 0) {
@@ -196,19 +196,6 @@ export function useWorkouts() {
   const totalVolume      = sessions.reduce((s, w) => s + (+w.total_volume || 0), 0)
 
   return { sessions, loading, add, remove, sessionsThisWeek, totalVolume }
-}
-async function add({ session, exercises }) {
-  const { data: s, error } = await supabase
-    .from('workout_sessions')
-    .insert({ ...session, user_id: user.id, date: today() })
-    .select().single()
-  if (error) return
-  if (exercises.length > 0) {
-    await supabase.from('exercises').insert(
-      exercises.map((e, i) => ({ ...e, user_id: user.id, session_id: s.id, sort_order: i }))
-    )
-  }
-  await fetch()
 }
 
 // ── Journal ───────────────────────────────────────────────────────────────────
