@@ -13,8 +13,8 @@ export default function Wellness() {
 
   const dateKey = format(selectedDate, 'yyyy-MM-dd')
   const isSelectedToday = isToday(selectedDate)
+  const isFuture = selectedDate > new Date()
 
-  // Count completions for the selected date
   const completedOnDate = goals.filter(g =>
     checkins.some(c => c.goal_id === g.id && c.date === dateKey)
   ).length
@@ -31,13 +31,6 @@ export default function Wellness() {
     setSaving(false)
   }
 
-  // Toggle for selected date — only allow past/today, not future
-  function handleToggle(goalId) {
-    const futureDate = selectedDate > new Date()
-    if (futureDate) return
-    toggle(goalId, dateKey)
-  }
-
   return (
     <div className="fade-up">
       <SectionHeader title="Wellness" sub="Daily habits & goal tracking" />
@@ -49,45 +42,14 @@ export default function Wellness() {
       </Grid>
 
       <Grid cols={2} style={{ marginBottom: 16 }}>
-        {/* Add goal */}
         <Card>
           <CardTitle>Add New Goal</CardTitle>
           <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Goal description (e.g. Drink 8 glasses of water)" required />
+            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Goal description" required />
             <div>
               <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>Choose an icon</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {ICONS.map(icon => (
                   <button key={icon} type="button" onClick={() => setForm(f => ({ ...f, icon }))} style={{
                     width: 36, height: 36, borderRadius: 8, fontSize: 18, cursor: 'pointer', transition: 'all 0.12s',
-                    border: `1px solid ${form.icon === icon ? 'var(--gold)' : 'var(--border)'}`,
-                    background: form.icon === icon ? 'rgba(201,153,58,0.15)' : 'var(--bg3)',
-                  }}>{icon}</button>
-                ))}
-              </div>
-            </div>
-            <Button type="submit" variant="gold" loading={saving}>Add Goal</Button>
-          </form>
-        </Card>
-
-        {/* Progress rings */}
-        <Card>
-          <CardTitle>Progress Rings — tap to toggle</CardTitle>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'center', padding: '8px 0' }}>
-            {goals.length === 0
-              ? <EmptyState icon="🎯" message="Add goals to see progress rings" />
-              : goals.map(g => {
-                const done = isCompleted(g.id)
-                const r = 26, circ = 2 * Math.PI * r
-                return (
-                  <div key={g.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer' }} onClick={() => toggle(g.id)}>
-                    <div style={{ position: 'relative', width: 68, height: 68 }}>
-                      <svg width="68" height="68" style={{ transform: 'rotate(-90deg)' }}>
-                        <circle cx="34" cy="34" r={r} fill="none" stroke="var(--bg4)" strokeWidth="5" />
-                        <circle cx="34" cy="34" r={r} fill="none" stroke={done ? 'var(--teal)' : 'var(--bg4)'} strokeWidth="5"
-                          strokeDasharray={circ} strokeDashoffset={done ? 0 : circ} strokeLinecap="round"
-                          style={{ transition: 'stroke-dashoffset 0.4s ease, stroke 0.3s' }} />
-                      </svg>
-                      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: 20, marginTop: -2 }}>{g.icon}</div>
-                    </div>
-                    <div style={{ fontSize: 11, color: d
+                    border: `1px solid ${form.icon === icon ? 'var(--gold)' : 'var(--b
