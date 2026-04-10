@@ -241,7 +241,12 @@ function AddEventModal({ defaultDate, onSave, onClose }) {
 export default function Schedule() {
   const [view, setView]         = useState('month')
   const [current, setCurrent]   = useState(new Date())
-  const [events, setEvents]     = useState(SAMPLE_EVENTS)
+  const [events, setEvents] = useState(() => {
+  try {
+    const saved = localStorage.getItem('folio_schedule_events')
+    return saved ? JSON.parse(saved) : SAMPLE_EVENTS
+  } catch { return SAMPLE_EVENTS }
+})
   const [showModal, setShowModal] = useState(false)
 
   function navigate(dir) {
