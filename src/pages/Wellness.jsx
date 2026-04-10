@@ -1,13 +1,26 @@
 import { useState } from 'react'
+import { format, addDays, subDays, isToday } from 'date-fns'
 import { useWellness } from '@/hooks/useData'
 import { Card, CardTitle, Grid, Button, EmptyState, SectionHeader, StatCard } from '@/components/shared/UI'
 
 const ICONS = ['💧','🏃','🧘','📚','😴','🌿','💊','🥗','🏋️','🚶','✍️','🎯','🧴','☀️','🍃']
 
 export default function Wellness() {
-  const { goals, isCompleted, completedToday, addGoal, removeGoal, toggle } = useWellness()
+  const { goals, isCompleted, completedToday, addGoal, removeGoal, toggle, checkins } = useWellness()
   const [form, setForm] = useState({ name: '', icon: '💧' })
   const [saving, setSaving] = useState(false)
+  const [selectedDate, setSelectedDate] = useState(new Date())
+
+  const dateKey = format(selectedDate, 'yyyy-MM-dd')
+  const isSelectedToday = isToday(selectedDate)
+
+  // Count completions for the selected date
+  const completedOnDate = goals.filter(g =>
+    checkins.some(c => c.goal_id === g.id && c.date === dateKey)
+  ).length
+
+  const isCompletedOnDate = (goalId) =>
+    checkins.some(c => c.goal_id === goalId && c.date === dateKey)
 
   function handleAdd(e) {
     e.preventDefault()
@@ -16,6 +29,13 @@ export default function Wellness() {
     addGoal(form)
     setForm(f => ({ ...f, name: '' }))
     setSaving(false)
+  }
+
+  // Toggle for selected date — only allow past/today, not future
+  function handleToggle(goalId) {
+    const futureDate = selectedDate > new Date()
+    if (futureDate) return
+    toggle(goalId, dateKey)
   }
 
   return (
@@ -29,6 +49,7 @@ export default function Wellness() {
       </Grid>
 
       <Grid cols={2} style={{ marginBottom: 16 }}>
+        {/* Add goal */}
         <Card>
           <CardTitle>Add New Goal</CardTitle>
           <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -49,6 +70,7 @@ export default function Wellness() {
           </form>
         </Card>
 
+        {/* Progress rings */}
         <Card>
           <CardTitle>Progress Rings — tap to toggle</CardTitle>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'center', padding: '8px 0' }}>
@@ -68,37 +90,4 @@ export default function Wellness() {
                       </svg>
                       <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: 20, marginTop: -2 }}>{g.icon}</div>
                     </div>
-                    <div style={{ fontSize: 11, color: done ? 'var(--teal2)' : 'var(--text3)', textAlign: 'center', maxWidth: 72, lineHeight: 1.3 }}>
-                      {g.name.slice(0, 18)}{g.name.length > 18 ? '…' : ''}
-                    </div>
-                    <div style={{ fontSize: 10, color: done ? 'var(--teal2)' : 'var(--text3)' }}>{done ? '✓ done' : 'tap'}</div>
-                  </div>
-                )
-              })
-            }
-          </div>
-        </Card>
-      </Grid>
-
-      <Card>
-        <CardTitle>All Goals</CardTitle>
-        {goals.length === 0
-          ? <EmptyState icon="🌱" message="Add your first wellness goal above." />
-          : goals.map(g => {
-            const done = isCompleted(g.id)
-            return (
-              <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 'var(--radius-sm)', marginBottom: 6, border: `1px solid ${done ? 'rgba(61,184,138,0.2)' : 'var(--border)'}`, background: done ? 'rgba(61,184,138,0.05)' : 'var(--bg3)', transition: 'all 0.2s' }}>
-                <span style={{ fontSize: 22 }}>{g.icon}</span>
-                <span style={{ flex: 1, fontSize: 14, color: done ? 'var(--text3)' : 'var(--text)', textDecoration: done ? 'line-through' : 'none' }}>{g.name}</span>
-                <Button size="sm" variant={done ? 'teal' : 'default'} onClick={() => toggle(g.id)}>{done ? '✓ Done' : 'Mark Done'}</Button>
-                <button onClick={() => removeGoal(g.id)} style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 18, padding: '2px 4px' }}
-                  onMouseEnter={e => e.target.style.color = 'var(--coral2)'}
-                  onMouseLeave={e => e.target.style.color = 'var(--text3)'}>×</button>
-              </div>
-            )
-          })
-        }
-      </Card>
-    </div>
-  )
-}
+                    <div style={{ fontSize: 11, color: d
