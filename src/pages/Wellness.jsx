@@ -52,4 +52,122 @@ export default function Wellness() {
                 {ICONS.map(icon => (
                   <button key={icon} type="button" onClick={() => setForm(f => ({ ...f, icon }))} style={{
                     width: 36, height: 36, borderRadius: 8, fontSize: 18, cursor: 'pointer', transition: 'all 0.12s',
-                    border: form.icon === icon ? '1px solid var(--gold)' : '1px solid var(--border)',
+                    border: `1px solid ${form.icon === icon ? 'var(--gold)' : 'var(--border)'}`,
+                    background: form.icon === icon ? 'rgba(201,153,58,0.15)' : 'var(--bg3)',
+                  }}>{icon}</button>
+                ))}
+              </div>
+            </div>
+            <Button type="submit" variant="gold" loading={saving}>Add Goal</Button>
+          </form>
+        </Card>
+
+        <Card>
+          <CardTitle>Today's Progress Rings</CardTitle>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'center', padding: '8px 0' }}>
+            {goals.length === 0
+              ? <EmptyState icon="🎯" message="Add goals to see progress rings" />
+              : goals.map(g => {
+                const done = isCompleted(g.id)
+                const r = 26, circ = 2 * Math.PI * r
+                return (
+                  <div key={g.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer' }} onClick={() => toggle(g.id)}>
+                    <div style={{ position: 'relative', width: 68, height: 68 }}>
+                      <svg width="68" height="68" style={{ transform: 'rotate(-90deg)' }}>
+                        <circle cx="34" cy="34" r={r} fill="none" stroke="var(--bg4)" strokeWidth="5" />
+                        <circle cx="34" cy="34" r={r} fill="none" stroke={done ? 'var(--teal)' : 'var(--bg4)'} strokeWidth="5"
+                          strokeDasharray={circ} strokeDashoffset={done ? 0 : circ} strokeLinecap="round"
+                          style={{ transition: 'stroke-dashoffset 0.4s ease, stroke 0.3s' }} />
+                      </svg>
+                      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: 20, marginTop: -2 }}>{g.icon}</div>
+                    </div>
+                    <div style={{ fontSize: 11, color: done ? 'var(--teal2)' : 'var(--text3)', textAlign: 'center', maxWidth: 72, lineHeight: 1.3 }}>
+                      {g.name.slice(0, 18)}{g.name.length > 18 ? '…' : ''}
+                    </div>
+                    <div style={{ fontSize: 10, color: done ? 'var(--teal2)' : 'var(--text3)' }}>{done ? '✓ done' : 'tap'}</div>
+                  </div>
+                )
+              })
+            }
+          </div>
+        </Card>
+      </Grid>
+
+      <Card>
+        {/* Date nav */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <button onClick={() => setSelectedDate(d => subDays(d, 1))} style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-sm)', color: 'var(--text2)', fontSize: 13, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit' }}>
+            ← Prev
+          </button>
+
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 15, fontWeight: 500, color: isSelectedToday ? 'var(--gold2)' : 'var(--text)' }}>
+              {isSelectedToday ? 'Today' : format(selectedDate, 'EEEE')}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
+              {format(selectedDate, 'MMMM d, yyyy')}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--teal2)', marginTop: 2 }}>
+              {completedOnDate}/{goals.length} completed
+            </div>
+          </div>
+
+          <button
+            onClick={() => setSelectedDate(d => addDays(d, 1))}
+            disabled={isSelectedToday}
+            style={{
+              background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-sm)',
+              color: isSelectedToday ? 'var(--text3)' : 'var(--text2)', fontSize: 13, padding: '6px 12px',
+              cursor: isSelectedToday ? 'not-allowed' : 'pointer',
+              opacity: isSelectedToday ? 0.4 : 1, fontFamily: 'inherit',
+            }}
+          >
+            Next →
+          </button>
+        </div>
+
+        {!isSelectedToday && (
+          <div style={{ textAlign: 'center', marginBottom: 14 }}>
+            <button onClick={() => setSelectedDate(new Date())} style={{
+              background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+              color: 'var(--text3)', fontSize: 12, padding: '5px 14px', cursor: 'pointer', fontFamily: 'inherit',
+            }}>Jump to today</button>
+          </div>
+        )}
+
+        <CardTitle>Goals for {isSelectedToday ? 'Today' : format(selectedDate, 'MMM d')}</CardTitle>
+
+        {goals.length === 0
+          ? <EmptyState icon="🌱" message="Add your first wellness goal above." />
+          : goals.map(g => {
+            const done = isCompletedOnDate(g.id)
+            return (
+              <div key={g.id} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 12px', borderRadius: 'var(--radius-sm)', marginBottom: 6,
+                border: `1px solid ${done ? 'rgba(61,184,138,0.2)' : 'var(--border)'}`,
+                background: done ? 'rgba(61,184,138,0.05)' : 'var(--bg3)',
+                transition: 'all 0.2s', opacity: isFuture ? 0.5 : 1,
+              }}>
+                <span style={{ fontSize: 22 }}>{g.icon}</span>
+                <span style={{ flex: 1, fontSize: 14, color: done ? 'var(--text3)' : 'var(--text)', textDecoration: done ? 'line-through' : 'none' }}>
+                  {g.name}
+                </span>
+                {!isFuture
+                  ? <Button size="sm" variant={done ? 'teal' : 'default'} onClick={() => toggle(g.id, dateKey)}>
+                      {done ? '✓ Done' : 'Mark Done'}
+                    </Button>
+                  : <span style={{ fontSize: 12, color: 'var(--text3)' }}>future</span>
+                }
+                <button onClick={() => removeGoal(g.id)}
+                  style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 18, padding: '2px 4px' }}
+                  onMouseEnter={e => e.target.style.color = 'var(--coral2)'}
+                  onMouseLeave={e => e.target.style.color = 'var(--text3)'}>×</button>
+              </div>
+            )
+          })
+        }
+      </Card>
+    </div>
+  )
+}
