@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
          addDays, addMonths, subMonths, addWeeks, subWeeks,
-         isSameMonth, isToday } from 'date-fns'
+         isSameMonth, isToday, eachDayOfInterval, parseISO } from 'date-fns'
 import { SectionHeader } from '@/components/shared/UI'
 
 const EVENT_COLORS = {
@@ -10,11 +10,11 @@ const EVENT_COLORS = {
   reminder: { bg: 'rgba(217,100,74,0.2)',  text: '#f07a5e', dot: '#d9644a' },
   health:   { bg: 'rgba(74,123,224,0.2)',  text: '#6a96f0', dot: '#4a7be0' },
   personal: { bg: 'rgba(138,110,216,0.2)', text: '#a88ef0', dot: '#8a6ed8' },
+  work:     { bg: 'rgba(93,202,166,0.2)',  text: '#5dcaa5', dot: '#1d9e75' },
 }
 
 const DAYS  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
-const HOURS = ['6 AM','7 AM','8 AM','9 AM','10 AM','11 AM','12 PM','1 PM','2 PM','3 PM','4 PM','5 PM','6 PM','7 PM','8 PM','9 PM']
-
+const HOURS = ['6 AM','7 AM','8 AM','9 AM','10 AM','11 AM','12 PM','1 PM','2 PM','3 PM','4 PM','5 PM','6 PM','7 PM','8 PM','9 PM','10 PM']
 const STORAGE_KEY = 'folio_schedule_events'
 
 function loadEvents() {
@@ -28,12 +28,24 @@ function saveEvents(events) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(events)) } catch {}
 }
 
+function timeLabel(event) {
+  if (event.allDay) return 'All day'
+  if (event.startTime && event.endTime) return event.startTime + ' - ' + event.endTime
+  return ''
+}
+
+function eventSpansDay(event, dateKey) {
+  if (event.date === dateKey) return true
+  if (event.endDate && event.endDate >= dateKey && event.date <= dateKey) return true
+  return false
+}
+
 function EventPill({ event, small, onDelete }) {
   const c = EVENT_COLORS[event.category] || EVENT_COLORS.personal
   return (
     <div style={{ display: 'flex', alignItems: 'center', background: c.bg, borderRadius: 3, marginBottom: 2, overflow: 'hidden' }}>
       <div style={{ flex: 1, color: c.text, padding: small ? '2px 5px' : '3px 7px', fontSize: small ? 10 : 11, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-        {event.title}
+        {event.allDay ? '[All day] ' : ''}{event.title}
       </div>
       <button onClick={e => { e.stopPropagation(); onDelete(event.id) }}
         style={{ background: 'none', border: 'none', color: c.text, opacity: 0.7, cursor: 'pointer', padding: '0 5px', fontSize: small ? 12 : 14, lineHeight: 1, flexShrink: 0 }}>
@@ -61,7 +73,7 @@ function MonthView({ current, events, onDelete }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: 'var(--border)' }}>
         {days.map((day, i) => {
           const dayKey    = format(day, 'yyyy-MM-dd')
-          const dayEvents = events.filter(e => e.date === dayKey)
+          const dayEvents = events.filter(e => eventSpansDay(e, dayKey))
           const today     = isToday(day)
           const other     = !isSameMonth(day, current)
           return (
@@ -103,7 +115,16 @@ function WeekView({ current, events, onDelete }) {
             <div key={hour} style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', borderBottom: '1px solid var(--border)', minHeight: 44 }}>
               <div style={{ padding: '6px 8px', fontSize: 10, color: 'var(--text3)', textAlign: 'right', borderRight: '1px solid var(--border)' }}>{hour}</div>
               {weekDays.map((day, di) => {
-                const dayEvents = events.filter(e => e.date === format(day, 'yyyy-MM-dd') && e.hour === h)
+                const dayKey    = format(day, 'yyyy-MM-dd')
+                const dayEvents = events.filter(e => {
+                  if (!eventSpansDay(e, dayKey)) return false
+                  if (e.allDay) return h === 6
+                  if (e.startTime) {
+                    const startH = parseInt(e.startTime.split(':')[0])
+                    return startH === h
+                  }
+                  return e.hour === h
+                })
                 return (
                   <div key={di} style={{ padding: 2, borderLeft: '1px solid var(--border)', minHeight: 44 }}>
                     {dayEvents.map(e => <EventPill key={e.id} event={e} small onDelete={onDelete} />)}
@@ -120,7 +141,10 @@ function WeekView({ current, events, onDelete }) {
 
 function DayView({ current, events, onDelete }) {
   const dateKey   = format(current, 'yyyy-MM-dd')
-  const dayEvents = events.filter(e => e.date === dateKey)
+  const dayEvents = events.filter(e => eventSpansDay(e, dateKey))
+  const allDayEvents = dayEvents.filter(e => e.allDay)
+  const timedEvents  = dayEvents.filter(e => !e.allDay)
+
   return (
     <div style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border)' }}>
       <div style={{ background: 'var(--bg3)', padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -133,9 +157,31 @@ function DayView({ current, events, onDelete }) {
           <div style={{ fontSize: 11, color: 'var(--text3)' }}>events</div>
         </div>
       </div>
+
+      {allDayEvents.length > 0 && (
+        <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg3)' }}>
+          <div style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6 }}>All day</div>
+          {allDayEvents.map(e => {
+            const c = EVENT_COLORS[e.category] || EVENT_COLORS.personal
+            return (
+              <div key={e.id} style={{ background: c.bg, borderRadius: 8, padding: '7px 12px', marginBottom: 4, borderLeft: '3px solid ' + c.dot, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: c.text }}>{e.title}</div>
+                  {e.endDate && e.endDate !== e.date && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{e.date} to {e.endDate}</div>}
+                </div>
+                <button onClick={() => onDelete(e.id)} style={{ background: 'none', border: 'none', color: c.text, opacity: 0.7, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}>x</button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {HOURS.map((hour, hi) => {
         const h = hi + 6
-        const slotEvents = events.filter(e => e.date === dateKey && e.hour === h)
+        const slotEvents = timedEvents.filter(e => {
+          if (e.startTime) return parseInt(e.startTime.split(':')[0]) === h
+          return e.hour === h
+        })
         return (
           <div key={hour} style={{ display: 'flex', gap: 14, padding: '10px 16px 6px', borderBottom: '1px solid var(--border)', minHeight: 52, alignItems: 'flex-start', background: 'var(--bg2)' }}>
             <div style={{ fontSize: 11, color: 'var(--text3)', width: 40, flexShrink: 0, paddingTop: 2 }}>{hour}</div>
@@ -146,12 +192,11 @@ function DayView({ current, events, onDelete }) {
                   <div key={e.id} style={{ background: c.bg, borderRadius: 8, padding: '7px 12px', marginBottom: 4, borderLeft: '3px solid ' + c.dot, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 500, color: c.text }}>{e.title}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{e.note}{e.duration ? ' · ' + e.duration + ' min' : ''}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+                        {timeLabel(e)}{e.note ? ' · ' + e.note : ''}
+                      </div>
                     </div>
-                    <button onClick={() => onDelete(e.id)}
-                      style={{ background: 'none', border: 'none', color: c.text, opacity: 0.7, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>
-                      x
-                    </button>
+                    <button onClick={() => onDelete(e.id)} style={{ background: 'none', border: 'none', color: c.text, opacity: 0.7, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>x</button>
                   </div>
                 )
               })}
@@ -164,51 +209,52 @@ function DayView({ current, events, onDelete }) {
 }
 
 function AddEventModal({ defaultDate, onSave, onClose }) {
-  const [form, setForm] = useState({ title: '', category: 'personal', date: defaultDate, hour: 9, duration: 60, note: '' })
+  const [form, setForm] = useState({
+    title:     '',
+    category:  'personal',
+    date:      defaultDate,
+    endDate:   defaultDate,
+    startTime: '09:00',
+    endTime:   '10:00',
+    allDay:    false,
+    multiDay:  false,
+    note:      '',
+  })
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
+  const toggle = k => setForm(f => ({ ...f, [k]: !f[k] }))
 
   function handleSave() {
     if (!form.title.trim()) return
-    onSave({ ...form, id: Date.now(), hour: +form.hour, duration: +form.duration })
+    const hour = form.allDay ? 6 : parseInt(form.startTime.split(':')[0])
+    onSave({
+      ...form,
+      id:      Date.now(),
+      hour,
+      endDate: form.multiDay ? form.endDate : form.date,
+    })
     onClose()
   }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 20 }}>
-      <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-lg)', padding: 24, width: '100%', maxWidth: 400 }}>
+      <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-lg)', padding: 24, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 20, color: 'var(--text)' }}>Add Event</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>x</button>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>Event title</label>
-            <input value={form.title} onChange={set('title')} placeholder="e.g. Morning run" autoFocus />
+            <input value={form.title} onChange={set('title')} placeholder="e.g. Team meeting" autoFocus />
           </div>
-          <div>
-            <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>Date</label>
-            <input type="date" value={form.date} onChange={set('date')} style={{ colorScheme: 'dark' }} />
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>Time</label>
-              <select value={form.hour} onChange={set('hour')}>
-                {Array.from({ length: 16 }, (_, i) => i + 6).map(h => (
-                  <option key={h} value={h}>{h < 12 ? h + ':00 AM' : h === 12 ? '12:00 PM' : (h-12) + ':00 PM'}</option>
-                ))}
-              </select>
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>Duration (min)</label>
-              <input type="number" value={form.duration} onChange={set('duration')} min={0} step={15} placeholder="0 = all day" />
-            </div>
-          </div>
+
           <div>
             <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 8 }}>Category</label>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {Object.entries(EVENT_COLORS).map(([cat, c]) => (
                 <button key={cat} type="button" onClick={() => setForm(f => ({ ...f, category: cat }))} style={{
-                  padding: '6px 12px',
+                  padding: '5px 10px',
                   border: form.category === cat ? '1px solid ' + c.dot : '1px solid var(--border)',
                   borderRadius: 'var(--radius-sm)',
                   background: form.category === cat ? c.bg : 'var(--bg3)',
@@ -218,10 +264,53 @@ function AddEventModal({ defaultDate, onSave, onClose }) {
               ))}
             </div>
           </div>
+
+          <div style={{ display: 'flex', gap: 16 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text2)' }}>
+              <input type="checkbox" checked={form.allDay} onChange={() => toggle('allDay')}
+                style={{ width: 16, height: 16, accentColor: 'var(--gold)', cursor: 'pointer' }} />
+              All day
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text2)' }}>
+              <input type="checkbox" checked={form.multiDay} onChange={() => toggle('multiDay')}
+                style={{ width: 16, height: 16, accentColor: 'var(--gold)', cursor: 'pointer' }} />
+              Multiple days
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>
+                {form.multiDay ? 'Start date' : 'Date'}
+              </label>
+              <input type="date" value={form.date} onChange={set('date')} style={{ colorScheme: 'dark' }} />
+            </div>
+            {form.multiDay && (
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>End date</label>
+                <input type="date" value={form.endDate} onChange={set('endDate')} min={form.date} style={{ colorScheme: 'dark' }} />
+              </div>
+            )}
+          </div>
+
+          {!form.allDay && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>Start time</label>
+                <input type="time" value={form.startTime} onChange={set('startTime')} style={{ colorScheme: 'dark' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>End time</label>
+                <input type="time" value={form.endTime} onChange={set('endTime')} style={{ colorScheme: 'dark' }} />
+              </div>
+            </div>
+          )}
+
           <div>
             <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>Note (optional)</label>
-            <input value={form.note} onChange={set('note')} placeholder="e.g. Gym / Clinic / recurring" />
+            <input value={form.note} onChange={set('note')} placeholder="e.g. Meeting room 3 / bring laptop" />
           </div>
+
           <button onClick={handleSave} style={{
             marginTop: 4, padding: '11px 16px',
             background: form.title.trim() ? 'var(--gold)' : 'var(--bg4)',
