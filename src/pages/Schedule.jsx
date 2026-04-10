@@ -15,18 +15,18 @@ const EVENT_COLORS = {
 const DAYS  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 const HOURS = ['6 AM','7 AM','8 AM','9 AM','10 AM','11 AM','12 PM','1 PM','2 PM','3 PM','4 PM','5 PM','6 PM','7 PM','8 PM','9 PM']
 
-const SAMPLE_EVENTS = [
-  { id:1,  title: 'Morning workout',    category: 'workout',  date: '2026-04-09', hour: 7,  duration: 60,  note: 'Gym' },
-  { id:2,  title: 'Doctor appointment', category: 'health',   date: '2026-04-09', hour: 9,  duration: 30,  note: 'Clinic' },
-  { id:3,  title: 'Rent due',           category: 'reminder', date: '2026-04-10', hour: 9,  duration: 0,   note: 'Finance' },
-  { id:4,  title: 'Salary day',         category: 'finance',  date: '2026-04-01', hour: 9,  duration: 0,   note: 'Income' },
-  { id:5,  title: 'Gym session',        category: 'workout',  date: '2026-04-07', hour: 7,  duration: 60,  note: 'Push day' },
-  { id:6,  title: 'Netflix',            category: 'personal', date: '2026-04-15', hour: 20, duration: 120, note: 'Subscription' },
-  { id:7,  title: 'Gym session',        category: 'workout',  date: '2026-04-13', hour: 7,  duration: 60,  note: 'Pull day' },
-  { id:8,  title: 'Weigh-in',           category: 'health',   date: '2026-04-21', hour: 8,  duration: 15,  note: 'Wellness' },
-  { id:9,  title: 'Gym session',        category: 'workout',  date: '2026-04-20', hour: 7,  duration: 60,  note: 'Leg day' },
-  { id:10, title: 'Bills reminder',     category: 'reminder', date: '2026-04-30', hour: 9,  duration: 0,   note: 'Finance' },
-]
+const STORAGE_KEY = 'folio_schedule_events'
+
+function loadEvents() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    return saved ? JSON.parse(saved) : []
+  } catch { return [] }
+}
+
+function saveEvents(events) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(events)) } catch {}
+}
 
 function EventPill({ event, small, onDelete }) {
   const c = EVENT_COLORS[event.category] || EVENT_COLORS.personal
@@ -37,7 +37,7 @@ function EventPill({ event, small, onDelete }) {
       </div>
       <button onClick={e => { e.stopPropagation(); onDelete(event.id) }}
         style={{ background: 'none', border: 'none', color: c.text, opacity: 0.7, cursor: 'pointer', padding: '0 5px', fontSize: small ? 12 : 14, lineHeight: 1, flexShrink: 0 }}>
-        ×
+        x
       </button>
     </div>
   )
@@ -49,7 +49,6 @@ function MonthView({ current, events, onDelete }) {
   const days  = []
   let d = start
   while (d <= end) { days.push(d); d = addDays(d, 1) }
-
   return (
     <div style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border)' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: 'var(--bg3)' }}>
@@ -131,7 +130,7 @@ function DayView({ current, events, onDelete }) {
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 22, fontWeight: 500, color: 'var(--text)' }}>{dayEvents.length}</div>
-          <div style={{ fontSize: 11, color: 'var(--text3)' }}>events today</div>
+          <div style={{ fontSize: 11, color: 'var(--text3)' }}>events</div>
         </div>
       </div>
       {HOURS.map((hour, hi) => {
@@ -144,14 +143,14 @@ function DayView({ current, events, onDelete }) {
               {slotEvents.map(e => {
                 const c = EVENT_COLORS[e.category] || EVENT_COLORS.personal
                 return (
-                  <div key={e.id} style={{ background: c.bg, borderRadius: 8, padding: '7px 12px', marginBottom: 4, borderLeft: `3px solid ${c.dot}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                  <div key={e.id} style={{ background: c.bg, borderRadius: 8, padding: '7px 12px', marginBottom: 4, borderLeft: '3px solid ' + c.dot, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 500, color: c.text }}>{e.title}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{e.note}{e.duration ? ` · ${e.duration} min` : ''}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{e.note}{e.duration ? ' · ' + e.duration + ' min' : ''}</div>
                     </div>
                     <button onClick={() => onDelete(e.id)}
                       style={{ background: 'none', border: 'none', color: c.text, opacity: 0.7, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>
-                      ×
+                      x
                     </button>
                   </div>
                 )
@@ -179,7 +178,7 @@ function AddEventModal({ defaultDate, onSave, onClose }) {
       <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-lg)', padding: 24, width: '100%', maxWidth: 400 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 20, color: 'var(--text)' }}>Add Event</div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>×</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>x</button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
@@ -195,7 +194,7 @@ function AddEventModal({ defaultDate, onSave, onClose }) {
               <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>Time</label>
               <select value={form.hour} onChange={set('hour')}>
                 {Array.from({ length: 16 }, (_, i) => i + 6).map(h => (
-                  <option key={h} value={h}>{h < 12 ? `${h}:00 AM` : h === 12 ? '12:00 PM' : `${h-12}:00 PM`}</option>
+                  <option key={h} value={h}>{h < 12 ? h + ':00 AM' : h === 12 ? '12:00 PM' : (h-12) + ':00 PM'}</option>
                 ))}
               </select>
             </div>
@@ -209,8 +208,10 @@ function AddEventModal({ defaultDate, onSave, onClose }) {
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {Object.entries(EVENT_COLORS).map(([cat, c]) => (
                 <button key={cat} type="button" onClick={() => setForm(f => ({ ...f, category: cat }))} style={{
-                  padding: '6px 12px', border: `1px solid ${form.category === cat ? c.dot : 'var(--border)'}`,
-                  borderRadius: 'var(--radius-sm)', background: form.category === cat ? c.bg : 'var(--bg3)',
+                  padding: '6px 12px',
+                  border: form.category === cat ? '1px solid ' + c.dot : '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)',
+                  background: form.category === cat ? c.bg : 'var(--bg3)',
                   color: form.category === cat ? c.text : 'var(--text3)',
                   fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize', transition: 'all 0.15s',
                 }}>{cat}</button>
@@ -239,15 +240,23 @@ function AddEventModal({ defaultDate, onSave, onClose }) {
 }
 
 export default function Schedule() {
-  const [view, setView]         = useState('month')
-  const [current, setCurrent]   = useState(new Date())
-  const [events, setEvents] = useState(() => {
-  try {
-    const saved = localStorage.getItem('folio_schedule_events')
-    return saved ? JSON.parse(saved) : SAMPLE_EVENTS
-  } catch { return SAMPLE_EVENTS }
-})
+  const [view, setView]           = useState('month')
+  const [current, setCurrent]     = useState(new Date())
   const [showModal, setShowModal] = useState(false)
+  const [events, setEvents]       = useState(() => loadEvents())
+
+  function updateEvents(next) {
+    setEvents(next)
+    saveEvents(next)
+  }
+
+  function handleDelete(id) {
+    updateEvents(events.filter(e => e.id !== id))
+  }
+
+  function handleAdd(ev) {
+    updateEvents([...events, ev])
+  }
 
   function navigate(dir) {
     if (view === 'month') setCurrent(dir > 0 ? addMonths(current, 1) : subMonths(current, 1))
@@ -260,7 +269,7 @@ export default function Schedule() {
     if (view === 'week') {
       const ws = startOfWeek(current)
       const we = endOfWeek(current)
-      return `${format(ws, 'MMM d')} – ${format(we, 'MMM d, yyyy')}`
+      return format(ws, 'MMM d') + ' - ' + format(we, 'MMM d, yyyy')
     }
     return format(current, 'EEEE, MMMM d')
   }
@@ -270,7 +279,7 @@ export default function Schedule() {
       {showModal && (
         <AddEventModal
           defaultDate={format(current, 'yyyy-MM-dd')}
-          onSave={ev => setEvents(prev => [...prev, ev])}
+          onSave={handleAdd}
           onClose={() => setShowModal(false)}
         />
       )}
@@ -279,9 +288,9 @@ export default function Schedule() {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={() => navigate(-1)} style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-sm)', color: 'var(--text2)', fontSize: 13, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit' }}>← Prev</button>
+          <button onClick={() => navigate(-1)} style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-sm)', color: 'var(--text2)', fontSize: 13, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit' }}>Prev</button>
           <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', minWidth: 180, textAlign: 'center' }}>{headerLabel()}</span>
-          <button onClick={() => navigate(1)} style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-sm)', color: 'var(--text2)', fontSize: 13, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit' }}>Next →</button>
+          <button onClick={() => navigate(1)} style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-sm)', color: 'var(--text2)', fontSize: 13, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit' }}>Next</button>
           <button onClick={() => setCurrent(new Date())} style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text3)', fontSize: 12, padding: '6px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>Today</button>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -303,9 +312,9 @@ export default function Schedule() {
         </div>
       </div>
 
-      {view === 'month' && <MonthView current={current} events={events} onDelete={id => setEvents(p => p.filter(e => e.id !== id))} />}
-      {view === 'week'  && <WeekView  current={current} events={events} onDelete={id => setEvents(p => p.filter(e => e.id !== id))} />}
-      {view === 'day'   && <DayView   current={current} events={events} onDelete={id => setEvents(p => p.filter(e => e.id !== id))} />}
+      {view === 'month' && <MonthView current={current} events={events} onDelete={handleDelete} />}
+      {view === 'week'  && <WeekView  current={current} events={events} onDelete={handleDelete} />}
+      {view === 'day'   && <DayView   current={current} events={events} onDelete={handleDelete} />}
 
       <div style={{ display: 'flex', gap: 14, marginTop: 14, flexWrap: 'wrap' }}>
         {Object.entries(EVENT_COLORS).map(([cat, c]) => (
