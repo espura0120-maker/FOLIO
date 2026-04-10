@@ -1,9 +1,10 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider } from '@/lib/AuthContext'
-import ProtectedRoute   from '@/components/auth/ProtectedRoute'
+import { AuthProvider }    from '@/lib/AuthContext'
+import ProtectedRoute      from '@/components/auth/ProtectedRoute'
 import AppShell   from '@/components/shared/AppShell'
 import AuthPage   from '@/pages/AuthPage'
 import Dashboard  from '@/pages/Dashboard'
+import Schedule   from '@/pages/Schedule'
 import Finance    from '@/pages/Finance'
 import Nutrition  from '@/pages/Nutrition'
 import Wellness   from '@/pages/Wellness'
@@ -22,13 +23,14 @@ export default function App() {
               <AppShell />
             </ProtectedRoute>
           }>
-            <Route index          element={<Dashboard />} />
-            <Route path="finance"   element={<Finance />} />
-            <Route path="nutrition" element={<Nutrition />} />
-            <Route path="wellness"  element={<Wellness />} />
-            <Route path="workout"   element={<Workout />} />
-            <Route path="journal"   element={<Journal />} />
-            <Route path="settings"  element={<Settings />} />
+            <Route index              element={<Dashboard />} />
+            <Route path="schedule"    element={<Schedule />} />
+            <Route path="finance"     element={<Finance />} />
+            <Route path="nutrition"   element={<Nutrition />} />
+            <Route path="wellness"    element={<Wellness />} />
+            <Route path="workout"     element={<Workout />} />
+            <Route path="journal"     element={<Journal />} />
+            <Route path="settings"    element={<Settings />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
