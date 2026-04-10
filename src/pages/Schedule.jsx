@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
          addDays, addMonths, subMonths, addWeeks, subWeeks,
-         isSameMonth, isToday, eachDayOfInterval, parseISO } from 'date-fns'
+         isSameMonth, isToday } from 'date-fns'
 import { SectionHeader } from '@/components/shared/UI'
 
 const EVENT_COLORS = {
@@ -10,7 +10,7 @@ const EVENT_COLORS = {
   reminder: { bg: 'rgba(217,100,74,0.2)',  text: '#f07a5e', dot: '#d9644a' },
   health:   { bg: 'rgba(74,123,224,0.2)',  text: '#6a96f0', dot: '#4a7be0' },
   personal: { bg: 'rgba(138,110,216,0.2)', text: '#a88ef0', dot: '#8a6ed8' },
-  work:     { bg: 'rgba(93,202,166,0.2)',  text: '#5dcaa5', dot: '#1d9e75' },
+  work:     { bg: 'rgba(29,158,117,0.2)',  text: '#5dcaa5', dot: '#1d9e75' },
 }
 
 const DAYS  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
@@ -40,11 +40,15 @@ function eventSpansDay(event, dateKey) {
   return false
 }
 
-function EventPill({ event, small, onDelete }) {
+function EventPill({ event, small, onDelete, onEdit }) {
   const c = EVENT_COLORS[event.category] || EVENT_COLORS.personal
   return (
     <div style={{ display: 'flex', alignItems: 'center', background: c.bg, borderRadius: 3, marginBottom: 2, overflow: 'hidden' }}>
-      <div style={{ flex: 1, color: c.text, padding: small ? '2px 5px' : '3px 7px', fontSize: small ? 10 : 11, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <div
+        onClick={e => { e.stopPropagation(); onEdit(event) }}
+        style={{ flex: 1, color: c.text, padding: small ? '2px 5px' : '3px 7px', fontSize: small ? 10 : 11, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}
+        title="Click to edit"
+      >
         {event.allDay ? '[All day] ' : ''}{event.title}
       </div>
       <button onClick={e => { e.stopPropagation(); onDelete(event.id) }}
@@ -55,7 +59,7 @@ function EventPill({ event, small, onDelete }) {
   )
 }
 
-function MonthView({ current, events, onDelete }) {
+function MonthView({ current, events, onDelete, onEdit }) {
   const start = startOfWeek(startOfMonth(current))
   const end   = endOfWeek(endOfMonth(current))
   const days  = []
@@ -84,7 +88,7 @@ function MonthView({ current, events, onDelete }) {
                   : <span style={{ fontSize: 12, color: other ? 'var(--text3)' : 'var(--text2)' }}>{format(day, 'd')}</span>
                 }
               </div>
-              {dayEvents.slice(0, 2).map(e => <EventPill key={e.id} event={e} small onDelete={onDelete} />)}
+              {dayEvents.slice(0, 2).map(e => <EventPill key={e.id} event={e} small onDelete={onDelete} onEdit={onEdit} />)}
               {dayEvents.length > 2 && <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>+{dayEvents.length - 2} more</div>}
             </div>
           )
@@ -94,7 +98,7 @@ function MonthView({ current, events, onDelete }) {
   )
 }
 
-function WeekView({ current, events, onDelete }) {
+function WeekView({ current, events, onDelete, onEdit }) {
   const weekStart = startOfWeek(current)
   const weekDays  = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   return (
@@ -119,15 +123,12 @@ function WeekView({ current, events, onDelete }) {
                 const dayEvents = events.filter(e => {
                   if (!eventSpansDay(e, dayKey)) return false
                   if (e.allDay) return h === 6
-                  if (e.startTime) {
-                    const startH = parseInt(e.startTime.split(':')[0])
-                    return startH === h
-                  }
+                  if (e.startTime) return parseInt(e.startTime.split(':')[0]) === h
                   return e.hour === h
                 })
                 return (
                   <div key={di} style={{ padding: 2, borderLeft: '1px solid var(--border)', minHeight: 44 }}>
-                    {dayEvents.map(e => <EventPill key={e.id} event={e} small onDelete={onDelete} />)}
+                    {dayEvents.map(e => <EventPill key={e.id} event={e} small onDelete={onDelete} onEdit={onEdit} />)}
                   </div>
                 )
               })}
@@ -139,12 +140,11 @@ function WeekView({ current, events, onDelete }) {
   )
 }
 
-function DayView({ current, events, onDelete }) {
-  const dateKey   = format(current, 'yyyy-MM-dd')
-  const dayEvents = events.filter(e => eventSpansDay(e, dateKey))
+function DayView({ current, events, onDelete, onEdit }) {
+  const dateKey      = format(current, 'yyyy-MM-dd')
+  const dayEvents    = events.filter(e => eventSpansDay(e, dateKey))
   const allDayEvents = dayEvents.filter(e => e.allDay)
   const timedEvents  = dayEvents.filter(e => !e.allDay)
-
   return (
     <div style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border)' }}>
       <div style={{ background: 'var(--bg3)', padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -157,25 +157,23 @@ function DayView({ current, events, onDelete }) {
           <div style={{ fontSize: 11, color: 'var(--text3)' }}>events</div>
         </div>
       </div>
-
       {allDayEvents.length > 0 && (
         <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg3)' }}>
           <div style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6 }}>All day</div>
           {allDayEvents.map(e => {
             const c = EVENT_COLORS[e.category] || EVENT_COLORS.personal
             return (
-              <div key={e.id} style={{ background: c.bg, borderRadius: 8, padding: '7px 12px', marginBottom: 4, borderLeft: '3px solid ' + c.dot, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <div key={e.id} onClick={() => onEdit(e)} style={{ background: c.bg, borderRadius: 8, padding: '7px 12px', marginBottom: 4, borderLeft: '3px solid ' + c.dot, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, cursor: 'pointer' }}>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 500, color: c.text }}>{e.title}</div>
                   {e.endDate && e.endDate !== e.date && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{e.date} to {e.endDate}</div>}
                 </div>
-                <button onClick={() => onDelete(e.id)} style={{ background: 'none', border: 'none', color: c.text, opacity: 0.7, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}>x</button>
+                <button onClick={ev => { ev.stopPropagation(); onDelete(e.id) }} style={{ background: 'none', border: 'none', color: c.text, opacity: 0.7, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}>x</button>
               </div>
             )
           })}
         </div>
       )}
-
       {HOURS.map((hour, hi) => {
         const h = hi + 6
         const slotEvents = timedEvents.filter(e => {
@@ -189,14 +187,12 @@ function DayView({ current, events, onDelete }) {
               {slotEvents.map(e => {
                 const c = EVENT_COLORS[e.category] || EVENT_COLORS.personal
                 return (
-                  <div key={e.id} style={{ background: c.bg, borderRadius: 8, padding: '7px 12px', marginBottom: 4, borderLeft: '3px solid ' + c.dot, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                  <div key={e.id} onClick={() => onEdit(e)} style={{ background: c.bg, borderRadius: 8, padding: '7px 12px', marginBottom: 4, borderLeft: '3px solid ' + c.dot, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, cursor: 'pointer' }}>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 500, color: c.text }}>{e.title}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
-                        {timeLabel(e)}{e.note ? ' · ' + e.note : ''}
-                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{timeLabel(e)}{e.note ? ' · ' + e.note : ''}</div>
                     </div>
-                    <button onClick={() => onDelete(e.id)} style={{ background: 'none', border: 'none', color: c.text, opacity: 0.7, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>x</button>
+                    <button onClick={ev => { ev.stopPropagation(); onDelete(e.id) }} style={{ background: 'none', border: 'none', color: c.text, opacity: 0.7, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>x</button>
                   </div>
                 )
               })}
@@ -208,19 +204,20 @@ function DayView({ current, events, onDelete }) {
   )
 }
 
-function AddEventModal({ defaultDate, onSave, onClose }) {
+function EventModal({ event, onSave, onDelete, onClose }) {
+  const isNew = !event.id
   const [form, setForm] = useState({
-    title:     '',
-    category:  'personal',
-    date:      defaultDate,
-    endDate:   defaultDate,
-    startTime: '09:00',
-    endTime:   '10:00',
-    allDay:    false,
-    multiDay:  false,
-    note:      '',
+    title:     event.title     || '',
+    category:  event.category  || 'personal',
+    date:      event.date      || format(new Date(), 'yyyy-MM-dd'),
+    endDate:   event.endDate   || event.date || format(new Date(), 'yyyy-MM-dd'),
+    startTime: event.startTime || '09:00',
+    endTime:   event.endTime   || '10:00',
+    allDay:    event.allDay    || false,
+    multiDay:  event.multiDay  || (event.endDate && event.endDate !== event.date) || false,
+    note:      event.note      || '',
   })
-  const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
+  const set    = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
   const toggle = k => setForm(f => ({ ...f, [k]: !f[k] }))
 
   function handleSave() {
@@ -228,7 +225,7 @@ function AddEventModal({ defaultDate, onSave, onClose }) {
     const hour = form.allDay ? 6 : parseInt(form.startTime.split(':')[0])
     onSave({
       ...form,
-      id:      Date.now(),
+      id:      event.id || Date.now(),
       hour,
       endDate: form.multiDay ? form.endDate : form.date,
     })
@@ -238,8 +235,11 @@ function AddEventModal({ defaultDate, onSave, onClose }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 20 }}>
       <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-lg)', padding: 24, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto' }}>
+
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-          <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 20, color: 'var(--text)' }}>Add Event</div>
+          <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 20, color: 'var(--text)' }}>
+            {isNew ? 'Add Event' : 'Edit Event'}
+          </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>x</button>
         </div>
 
@@ -312,7 +312,7 @@ function AddEventModal({ defaultDate, onSave, onClose }) {
           </div>
 
           <button onClick={handleSave} style={{
-            marginTop: 4, padding: '11px 16px',
+            padding: '11px 16px',
             background: form.title.trim() ? 'var(--gold)' : 'var(--bg4)',
             border: 'none', borderRadius: 'var(--radius-sm)',
             color: form.title.trim() ? '#1a1200' : 'var(--text3)',
@@ -320,8 +320,19 @@ function AddEventModal({ defaultDate, onSave, onClose }) {
             cursor: form.title.trim() ? 'pointer' : 'not-allowed',
             fontFamily: 'inherit', width: '100%', transition: 'all 0.15s',
           }}>
-            Save Event
+            {isNew ? 'Save Event' : 'Save Changes'}
           </button>
+
+          {!isNew && (
+            <button onClick={() => { onDelete(event.id); onClose() }} style={{
+              padding: '10px 16px', background: 'rgba(217,100,74,0.1)',
+              border: '1px solid rgba(217,100,74,0.3)', borderRadius: 'var(--radius-sm)',
+              color: 'var(--coral2)', fontSize: 14, fontWeight: 500,
+              cursor: 'pointer', fontFamily: 'inherit', width: '100%', transition: 'all 0.15s',
+            }}>
+              Delete Event
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -331,8 +342,8 @@ function AddEventModal({ defaultDate, onSave, onClose }) {
 export default function Schedule() {
   const [view, setView]           = useState('month')
   const [current, setCurrent]     = useState(new Date())
-  const [showModal, setShowModal] = useState(false)
   const [events, setEvents]       = useState(() => loadEvents())
+  const [modalEvent, setModalEvent] = useState(null)
 
   function updateEvents(next) {
     setEvents(next)
@@ -343,8 +354,17 @@ export default function Schedule() {
     updateEvents(events.filter(e => e.id !== id))
   }
 
-  function handleAdd(ev) {
-    updateEvents([...events, ev])
+  function handleSave(ev) {
+    const exists = events.find(e => e.id === ev.id)
+    if (exists) {
+      updateEvents(events.map(e => e.id === ev.id ? ev : e))
+    } else {
+      updateEvents([...events, ev])
+    }
+  }
+
+  function openNew() {
+    setModalEvent({ date: format(current, 'yyyy-MM-dd') })
   }
 
   function navigate(dir) {
@@ -365,11 +385,12 @@ export default function Schedule() {
 
   return (
     <div className="fade-up">
-      {showModal && (
-        <AddEventModal
-          defaultDate={format(current, 'yyyy-MM-dd')}
-          onSave={handleAdd}
-          onClose={() => setShowModal(false)}
+      {modalEvent && (
+        <EventModal
+          event={modalEvent}
+          onSave={handleSave}
+          onDelete={handleDelete}
+          onClose={() => setModalEvent(null)}
         />
       )}
 
@@ -393,7 +414,7 @@ export default function Schedule() {
               }}>{v}</button>
             ))}
           </div>
-          <button onClick={() => setShowModal(true)} style={{
+          <button onClick={openNew} style={{
             background: 'var(--gold)', border: 'none', borderRadius: 'var(--radius-sm)',
             color: '#1a1200', fontSize: 13, fontWeight: 600, padding: '7px 14px',
             cursor: 'pointer', fontFamily: 'inherit',
@@ -401,9 +422,9 @@ export default function Schedule() {
         </div>
       </div>
 
-      {view === 'month' && <MonthView current={current} events={events} onDelete={handleDelete} />}
-      {view === 'week'  && <WeekView  current={current} events={events} onDelete={handleDelete} />}
-      {view === 'day'   && <DayView   current={current} events={events} onDelete={handleDelete} />}
+      {view === 'month' && <MonthView current={current} events={events} onDelete={handleDelete} onEdit={setModalEvent} />}
+      {view === 'week'  && <WeekView  current={current} events={events} onDelete={handleDelete} onEdit={setModalEvent} />}
+      {view === 'day'   && <DayView   current={current} events={events} onDelete={handleDelete} onEdit={setModalEvent} />}
 
       <div style={{ display: 'flex', gap: 14, marginTop: 14, flexWrap: 'wrap' }}>
         {Object.entries(EVENT_COLORS).map(([cat, c]) => (
