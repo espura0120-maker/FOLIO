@@ -52,4 +52,4 @@ export default function Wellness() {
                 {ICONS.map(icon => (
                   <button key={icon} type="button" onClick={() => setForm(f => ({ ...f, icon }))} style={{
                     width: 36, height: 36, borderRadius: 8, fontSize: 18, cursor: 'pointer', transition: 'all 0.12s',
-                    border: `1px solid ${form.icon === icon ? 'var(--gold)' : 'var(--b
+                    border: form.icon === icon ? '1px solid var(--gold)' : '1px solid var(--border)',
