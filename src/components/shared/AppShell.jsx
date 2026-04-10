@@ -3,6 +3,7 @@ import { useAuth } from '@/lib/AuthContext'
 
 const NAV = [
   { to: '/',          label: 'Dashboard', dot: '#c9993a', icon: '◈'  },
+  { to: '/schedule',  label: 'Schedule',  dot: '#3db88a', icon: '📅' },
   { to: '/finance',   label: 'Finance',   dot: '#3db88a', icon: '💰' },
   { to: '/nutrition', label: 'Nutrition', dot: '#d9644a', icon: '🍽' },
   { to: '/wellness',  label: 'Wellness',  dot: '#4a7be0', icon: '🎯' },
@@ -56,9 +57,11 @@ export default function AppShell() {
             border-top: 1px solid var(--border);
             z-index: 100;
             padding-bottom: env(safe-area-inset-bottom, 0px);
+            overflow-x: auto;
           }
           .bottom-nav a {
-            flex: 1; display: flex; flex-direction: column;
+            flex: 1; min-width: 52px;
+            display: flex; flex-direction: column;
             align-items: center; justify-content: center;
             gap: 2px; text-decoration: none;
             color: var(--text3); font-size: 9px;
@@ -66,13 +69,13 @@ export default function AppShell() {
             -webkit-tap-highlight-color: transparent;
           }
           .bottom-nav a.active { color: var(--text); }
-          .bottom-nav .nav-icon { font-size: 19px; line-height: 1; }
+          .bottom-nav .nav-icon { font-size: 18px; line-height: 1; }
         }
       `}</style>
 
       <div className="app-layout">
 
-        {/* ── Desktop sidebar ── */}
+        {/* Desktop sidebar */}
         <aside className="sidebar">
           <div style={{ padding: '20px', borderBottom: '1px solid var(--border)' }}>
             <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 22, color: 'var(--gold2)', letterSpacing: '0.02em' }}>FOLIO</div>
@@ -112,7 +115,7 @@ export default function AppShell() {
                 <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {profile?.full_name || user?.email?.split('@')[0] || 'My Account'}
                 </div>
-                <button onClick={handleSignOut} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 11, cursor: 'pointer', padding: 0 }}>
+                <button onClick={handleSignOut} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 11, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
                   Sign out
                 </button>
               </div>
@@ -120,25 +123,25 @@ export default function AppShell() {
           </div>
         </aside>
 
-        {/* ── Mobile top bar ── */}
+        {/* Mobile top bar */}
         <div className="mobile-topbar">
           <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 20, color: 'var(--gold2)' }}>FOLIO</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(201,153,58,0.2)', color: 'var(--gold2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600 }}>
               {initials}
             </div>
-            <button onClick={handleSignOut} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text3)', fontSize: 12, cursor: 'pointer', padding: '5px 10px' }}>
+            <button onClick={handleSignOut} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text3)', fontSize: 12, cursor: 'pointer', padding: '5px 10px', fontFamily: 'inherit' }}>
               Sign out
             </button>
           </div>
         </div>
 
-        {/* ── Main ── */}
+        {/* Main content */}
         <main className="main-content">
           <Outlet />
         </main>
 
-        {/* ── Mobile bottom nav ── */}
+        {/* Mobile bottom nav */}
         <nav className="bottom-nav">
           {NAV.map(item => (
             <NavLink key={item.to} to={item.to} end={item.to === '/'}
