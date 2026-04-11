@@ -9,6 +9,7 @@ const NAV = [
   { to: '/wellness',  label: 'Wellness',  dot: '#4a7be0', icon: '🎯' },
   { to: '/workout',   label: 'Workout',   dot: '#8a6ed8', icon: '🏋️' },
   { to: '/journal',   label: 'Journal',   dot: '#c9993a', icon: '✍️' },
+  { to: '/cycle',     label: 'Cycle',     dot: '#d4537e', icon: '🌸' },
   { to: '/settings',  label: 'Settings',  dot: '#52504d', icon: '⚙️' },
 ]
 
@@ -38,8 +39,7 @@ export default function AppShell() {
           border-right: 1px solid rgba(255,255,255,0.07);
           backdrop-filter: blur(28px);
           -webkit-backdrop-filter: blur(28px);
-          position: relative;
-          overflow: hidden;
+          position: relative; overflow: hidden;
         }
         .sidebar::before {
           content: '';
@@ -59,7 +59,6 @@ export default function AppShell() {
           font-size: 14px; font-weight: 400;
           transition: all 0.2s;
           border: 1px solid transparent;
-          position: relative;
         }
         .folio-nav-link:hover {
           background: rgba(255,255,255,0.05);
@@ -73,16 +72,22 @@ export default function AppShell() {
           box-shadow: 0 0 18px rgba(201,153,58,0.10), inset 0 1px 0 rgba(255,255,255,0.06);
           text-shadow: 0 0 12px rgba(232,184,74,0.45);
         }
+        .folio-nav-link.active-cycle {
+          background: rgba(212,83,126,0.10) !important;
+          border-color: rgba(212,83,126,0.22) !important;
+          color: #ed93b1 !important;
+          text-shadow: 0 0 12px rgba(212,83,126,0.40) !important;
+          box-shadow: 0 0 18px rgba(212,83,126,0.10) !important;
+        }
         .folio-nav-dot {
           width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
           background: rgba(255,255,255,0.15); transition: all 0.2s;
         }
-        .folio-nav-link.active .folio-nav-dot {
+        .folio-nav-link.active .folio-nav-dot,
+        .folio-nav-link.active-cycle .folio-nav-dot {
           box-shadow: 0 0 6px currentColor, 0 0 10px currentColor;
         }
-        .main-content {
-          flex: 1; overflow: auto; padding: 28px 30px; position: relative;
-        }
+        .main-content { flex: 1; overflow: auto; padding: 28px 30px; }
         .mobile-topbar { display: none; }
         .bottom-nav    { display: none; }
 
@@ -95,8 +100,7 @@ export default function AppShell() {
             padding: 14px 16px 12px;
             border-bottom: 1px solid rgba(255,255,255,0.07);
             background: rgba(255,255,255,0.03);
-            backdrop-filter: blur(28px);
-            -webkit-backdrop-filter: blur(28px);
+            backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
             flex-shrink: 0;
           }
           .bottom-nav {
@@ -104,14 +108,13 @@ export default function AppShell() {
             bottom: 0; left: 0; right: 0; height: 64px;
             background: rgba(5,6,10,0.88);
             border-top: 1px solid rgba(255,255,255,0.08);
-            backdrop-filter: blur(28px);
-            -webkit-backdrop-filter: blur(28px);
+            backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
             z-index: 100;
             padding-bottom: env(safe-area-inset-bottom, 0px);
             overflow-x: auto;
           }
           .bottom-nav a {
-            flex: 1; min-width: 52px;
+            flex: 1; min-width: 44px;
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
             gap: 2px; text-decoration: none;
@@ -120,25 +123,25 @@ export default function AppShell() {
             -webkit-tap-highlight-color: transparent;
           }
           .bottom-nav a.active { color: #e8b84a; text-shadow: 0 0 10px rgba(232,184,74,0.5); }
-          .bottom-nav .bn-icon { font-size: 18px; line-height: 1; }
+          .bottom-nav a.active-cycle { color: #ed93b1 !important; }
+          .bottom-nav .bn-icon { font-size: 17px; line-height: 1; }
         }
       `}</style>
 
       <div className="app-layout">
         <aside className="sidebar">
-          {/* Logo */}
           <div style={{ padding: '22px 18px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', position: 'relative', zIndex: 1 }}>
-            <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 24, letterSpacing: '0.05em', color: '#e8b84a', textShadow: '0 0 22px rgba(232,184,74,0.50), 0 0 48px rgba(232,184,74,0.18)' }}>
-              FOLIO
-            </div>
+            <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 24, letterSpacing: '0.05em', color: '#e8b84a', textShadow: '0 0 22px rgba(232,184,74,0.50), 0 0 48px rgba(232,184,74,0.18)' }}>FOLIO</div>
             <div style={{ fontSize: 11, color: 'rgba(240,232,216,0.28)', marginTop: 3, letterSpacing: '0.05em' }}>Digital Bullet Journal</div>
           </div>
 
-          {/* Nav */}
           <nav style={{ flex: 1, padding: '12px 10px', overflowY: 'auto', position: 'relative', zIndex: 1 }}>
             {NAV.map(item => (
               <NavLink key={item.to} to={item.to} end={item.to === '/'}
-                className={({ isActive }) => 'folio-nav-link' + (isActive ? ' active' : '')}
+                className={({ isActive }) => {
+                  if (!isActive) return 'folio-nav-link'
+                  return item.to === '/cycle' ? 'folio-nav-link active-cycle' : 'folio-nav-link active'
+                }}
                 style={({ isActive }) => ({ color: isActive ? item.dot : undefined })}
               >
                 {({ isActive }) => (
@@ -151,7 +154,6 @@ export default function AppShell() {
             ))}
           </nav>
 
-          {/* User */}
           <div style={{ padding: '10px 10px 0', borderTop: '1px solid rgba(255,255,255,0.06)', position: 'relative', zIndex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 14px' }}>
               <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, background: 'rgba(201,153,58,0.14)', border: '1px solid rgba(201,153,58,0.28)', color: '#e8b84a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, boxShadow: '0 0 10px rgba(201,153,58,0.18)' }}>
@@ -172,26 +174,23 @@ export default function AppShell() {
           </div>
         </aside>
 
-        {/* Mobile top bar */}
         <div className="mobile-topbar">
           <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 20, color: '#e8b84a', textShadow: '0 0 18px rgba(232,184,74,0.45)' }}>FOLIO</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(201,153,58,0.14)', border: '1px solid rgba(201,153,58,0.28)', color: '#e8b84a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600 }}>
-              {initials}
-            </div>
-            <button onClick={handleSignOut} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 8, color: 'rgba(240,232,216,0.55)', fontSize: 12, cursor: 'pointer', padding: '5px 12px', fontFamily: 'inherit' }}>
-              Sign out
-            </button>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(201,153,58,0.14)', border: '1px solid rgba(201,153,58,0.28)', color: '#e8b84a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600 }}>{initials}</div>
+            <button onClick={handleSignOut} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 8, color: 'rgba(240,232,216,0.55)', fontSize: 12, cursor: 'pointer', padding: '5px 12px', fontFamily: 'inherit' }}>Sign out</button>
           </div>
         </div>
 
         <main className="main-content"><Outlet /></main>
 
-        {/* Mobile bottom nav */}
         <nav className="bottom-nav">
           {NAV.map(item => (
             <NavLink key={item.to} to={item.to} end={item.to === '/'}
-              className={({ isActive }) => isActive ? 'active' : ''}
+              className={({ isActive }) => {
+                if (!isActive) return ''
+                return item.to === '/cycle' ? 'active active-cycle' : 'active'
+              }}
               style={({ isActive }) => ({ color: isActive ? item.dot : undefined })}
             >
               <span className="bn-icon">{item.icon}</span>
