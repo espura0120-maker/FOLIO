@@ -9,6 +9,7 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
   const [success, setSuccess] = useState('')
+  const [showPass, setShowPass] = useState(false)
   const [form, setForm]       = useState({ email: '', password: '', fullName: '' })
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
 
@@ -42,106 +43,82 @@ export default function AuthPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      {/* Extra glow orb centered on auth page */}
-      <div style={{
-        position: 'fixed', top: '8%', left: '50%', transform: 'translateX(-50%)',
-        width: 520, height: 520,
-        background: 'radial-gradient(circle, rgba(218,155,38,0.32) 0%, rgba(200,130,20,0.12) 42%, transparent 70%)',
-        borderRadius: '50%', pointerEvents: 'none', zIndex: 0,
-        animation: 'glowPulse 5s ease-in-out infinite',
-        filter: 'blur(2px)',
-      }} />
-
-      <div style={{ width: '100%', maxWidth: 400, position: 'relative', zIndex: 1 }}>
+    <div style={{
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 20, background: '#0e0f16',
+    }}>
+      <div style={{ width: '100%', maxWidth: 400 }}>
 
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 38 }}>
-          {/* Diamond */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
-            <div style={{
-              width: 68, height: 68,
-              background: 'rgba(201,153,58,0.10)',
-              border: '1px solid rgba(201,153,58,0.28)',
-              borderRadius: 18,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 0 32px rgba(201,153,58,0.22), inset 0 1px 0 rgba(255,255,255,0.08)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              animation: 'glowPulse 4s ease-in-out infinite',
-            }}>
-              <svg width="34" height="34" viewBox="0 0 32 32">
-                <polygon points="16,3 28,13 16,29 4,13" fill="none" stroke="rgba(201,153,58,0.35)" strokeWidth="0.5"/>
-                <polygon points="16,3 28,13 16,11" fill="#fad878" opacity="0.92"/>
-                <polygon points="16,3 4,13 16,11"  fill="#f0c96a" opacity="0.82"/>
-                <polygon points="4,13 16,29 16,21"  fill="#7a5a1a" opacity="0.92"/>
-                <polygon points="28,13 16,29 16,21" fill="#9a7422" opacity="0.92"/>
-                <polygon points="4,13 16,11 16,21"  fill="#c9993a" opacity="0.97"/>
-                <polygon points="28,13 16,11 16,21" fill="#e8b85a" opacity="0.97"/>
-              </svg>
-            </div>
-          </div>
-          <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 40, color: '#e8b84a', letterSpacing: '0.06em', textShadow: '0 0 28px rgba(232,184,74,0.52), 0 0 60px rgba(232,184,74,0.18)' }}>
+        <div style={{ textAlign: 'center', marginBottom: 36 }}>
+          <div style={{ fontFamily: 'Plus Jakarta Sans, system-ui, sans-serif', fontSize: 38, fontWeight: 800, color: '#f5c842', letterSpacing: '0.04em', marginBottom: 6 }}>
             FOLIO
           </div>
-          <div style={{ fontSize: 12, color: 'rgba(240,232,216,0.30)', marginTop: 6, letterSpacing: '0.10em', textTransform: 'uppercase' }}>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.30)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
             Digital Bullet Journal
           </div>
         </div>
 
-        {/* Glass card */}
-        <div style={{
-          background: 'rgba(255,255,255,0.048)',
-          border: '1px solid rgba(255,255,255,0.09)',
-          borderRadius: 24,
-          padding: '28px 26px 24px',
-          backdropFilter: 'blur(28px)',
-          WebkitBackdropFilter: 'blur(28px)',
-          boxShadow: '0 0 48px rgba(201,153,58,0.09), inset 0 1px 0 rgba(255,255,255,0.07)',
-          position: 'relative', overflow: 'hidden',
-        }}>
-          {/* shimmer on top edge */}
-          <div style={{
-            position: 'absolute', top: 0, left: 0, right: 0, height: 1,
-            background: 'linear-gradient(90deg, transparent 0%, rgba(220,160,40,0.50) 50%, transparent 100%)',
-            pointerEvents: 'none',
-          }} />
+        {/* Card */}
+        <div style={{ background: '#1c1e2b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, padding: '28px 26px 24px' }}>
 
           {/* Mode toggle */}
-          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 4, marginBottom: 24, border: '1px solid rgba(255,255,255,0.07)' }}>
+          <div style={{ display: 'flex', background: '#262838', borderRadius: 12, padding: 4, marginBottom: 24 }}>
             {[['signin','Sign in'],['signup','Create account']].map(([m, label]) => (
               <button key={m} onClick={() => { setMode(m); setError(''); setSuccess('') }} style={{
                 flex: 1, padding: '8px 10px', fontFamily: 'inherit',
-                borderRadius: 9, fontSize: 13, fontWeight: 500,
-                background: mode === m ? 'rgba(201,153,58,0.16)' : 'transparent',
-                border: mode === m ? '1px solid rgba(201,153,58,0.28)' : '1px solid transparent',
-                color: mode === m ? '#e8b84a' : 'rgba(240,232,216,0.32)',
-                cursor: 'pointer', transition: 'all 0.2s',
-                boxShadow: mode === m ? '0 0 14px rgba(201,153,58,0.14)' : 'none',
-                textShadow: mode === m ? '0 0 10px rgba(232,184,74,0.40)' : 'none',
+                borderRadius: 9, fontSize: 13, fontWeight: 600,
+                background: mode === m ? '#f5c842' : 'transparent',
+                border: 'none',
+                color: mode === m ? '#1a1400' : 'rgba(255,255,255,0.35)',
+                cursor: 'pointer', transition: 'all 0.18s',
               }}>{label}</button>
             ))}
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {mode === 'signup' && (
               <div>
-                <label style={{ fontSize: 12, color: 'rgba(240,232,216,0.38)', display: 'block', marginBottom: 6, letterSpacing: '0.04em' }}>Full name</label>
+                <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.40)', display: 'block', marginBottom: 6, fontWeight: 600, letterSpacing: '0.03em' }}>Full name</label>
                 <input value={form.fullName} onChange={set('fullName')} placeholder="Your name" required />
               </div>
             )}
+
             <div>
-              <label style={{ fontSize: 12, color: 'rgba(240,232,216,0.38)', display: 'block', marginBottom: 6, letterSpacing: '0.04em' }}>Email</label>
-              <input type="email" value={form.email} onChange={set('email')} placeholder="you@example.com" required />
-            </div>
-            <div>
-              <label style={{ fontSize: 12, color: 'rgba(240,232,216,0.38)', display: 'block', marginBottom: 6, letterSpacing: '0.04em' }}>Password</label>
-              <input type="password" value={form.password} onChange={set('password')} placeholder="••••••••" required minLength={6} />
+              <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.40)', display: 'block', marginBottom: 6, fontWeight: 600, letterSpacing: '0.03em' }}>Email</label>
+              <div style={{ position: 'relative' }}>
+                <input type="email" value={form.email} onChange={set('email')} placeholder="you@example.com" required style={{ paddingRight: 42 }} />
+                <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+                  </svg>
+                </div>
+              </div>
             </div>
 
+            <div>
+              <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.40)', display: 'block', marginBottom: 6, fontWeight: 600, letterSpacing: '0.03em' }}>Password</label>
+              <div style={{ position: 'relative' }}>
+                <input type={showPass ? 'text' : 'password'} value={form.password} onChange={set('password')} placeholder="••••••••" required minLength={6} style={{ paddingRight: 42 }} />
+                <button type="button" onClick={() => setShowPass(p => !p)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    {showPass
+                      ? <><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></>
+                      : <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>
+                    }
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {mode === 'signin' && (
+              <div style={{ textAlign: 'right', marginTop: -6 }}>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.32)', textDecoration: 'underline', cursor: 'pointer' }}>Forgot password?</span>
+              </div>
+            )}
+
             {error && (
-              <div style={{ padding: '10px 14px', borderRadius: 10, fontSize: 13, background: 'rgba(217,100,74,0.10)', color: '#f07a5e', border: '1px solid rgba(217,100,74,0.20)' }}>
+              <div style={{ padding: '10px 14px', borderRadius: 10, fontSize: 13, background: 'rgba(232,98,74,0.10)', color: '#f07a62', border: '1px solid rgba(232,98,74,0.20)' }}>
                 {error}
               </div>
             )}
@@ -152,22 +129,22 @@ export default function AuthPage() {
             )}
 
             <button type="submit" disabled={loading} style={{
-              marginTop: 4, padding: '12px 16px', fontFamily: 'inherit',
-              background: 'linear-gradient(135deg, #b8852a 0%, #e8b84a 50%, #c9993a 100%)',
-              border: '1px solid rgba(232,184,74,0.28)',
-              borderRadius: 12, color: '#1a1000', fontSize: 14, fontWeight: 600,
+              marginTop: 6, padding: '13px 16px', fontFamily: 'inherit',
+              background: '#f5c842', border: 'none', borderRadius: 12,
+              color: '#1a1400', fontSize: 15, fontWeight: 700,
               cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1,
-              width: '100%',
-              boxShadow: '0 0 26px rgba(201,153,58,0.38), 0 0 52px rgba(201,153,58,0.12), inset 0 1px 0 rgba(255,255,255,0.22)',
-              textShadow: 'none',
-            }}>
-              {loading ? '...' : mode === 'signin' ? 'Sign in' : 'Create account'}
+              opacity: loading ? 0.7 : 1, width: '100%',
+              transition: 'opacity 0.2s, transform 0.15s',
+            }}
+            onMouseEnter={e => { if (!loading) e.target.style.transform = 'scale(1.01)' }}
+            onMouseLeave={e => e.target.style.transform = 'scale(1)'}
+            >
+              {loading ? '...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
             </button>
           </form>
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: 22, fontSize: 12, color: 'rgba(240,232,216,0.18)', letterSpacing: '0.05em' }}>
+        <div style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: 'rgba(255,255,255,0.18)' }}>
           Your data is private and encrypted ✦
         </div>
       </div>
