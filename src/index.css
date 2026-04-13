@@ -1,39 +1,50 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:      #05060a;
-  --bg2:     rgba(255,255,255,0.04);
-  --bg3:     rgba(255,255,255,0.06);
-  --bg4:     rgba(255,255,255,0.09);
-  --bg5:     rgba(255,255,255,0.13);
-  --border:  rgba(255,255,255,0.08);
-  --border2: rgba(255,255,255,0.13);
-  --border3: rgba(255,255,255,0.20);
-  --text:    #f0e8d8;
-  --text2:   rgba(240,232,216,0.58);
-  --text3:   rgba(240,232,216,0.32);
-  --gold:    #c9993a;
-  --gold2:   #e8b84a;
-  --gold3:   #f7d070;
+  --bg:      #0e0f16;
+  --bg2:     #161821;
+  --bg3:     #1c1e2b;
+  --bg4:     #222435;
+  --bg5:     #2a2d40;
+
+  --border:  rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.11);
+  --border3: rgba(255,255,255,0.18);
+
+  --text:    #ffffff;
+  --text2:   rgba(255,255,255,0.65);
+  --text3:   rgba(255,255,255,0.35);
+
+  --gold:    #f5c842;
+  --gold2:   #f7d060;
+  --gold3:   #fae090;
+  --gold-bg: rgba(245,200,66,0.12);
+  --gold-bg2: rgba(245,200,66,0.20);
+
   --teal:    #3db88a;
   --teal2:   #5dd4a6;
-  --coral:   #d9644a;
-  --coral2:  #f07a5e;
+  --coral:   #e8624a;
+  --coral2:  #f07a62;
   --blue:    #4a7be0;
   --blue2:   #6a96f0;
+  --orange:  #e8994a;
+  --orange2: #f0b06a;
   --purple:  #8a6ed8;
   --purple2: #a88ef0;
+  --pink:    #d4537e;
+  --pink2:   #ed93b1;
+
   --radius-sm: 10px;
   --radius:    14px;
   --radius-lg: 18px;
-  --radius-xl: 24px;
+  --radius-xl: 22px;
 }
 
 html, body, #root {
   height: 100%;
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
   font-size: 15px;
@@ -42,69 +53,36 @@ html, body, #root {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Animated glow orbs ── */
-body::before {
-  content: '';
-  position: fixed;
-  width: 600px;
-  height: 600px;
-  left: 50%;
-  top: -140px;
-  transform: translateX(-50%);
-  background: radial-gradient(circle, rgba(218,155,38,0.50) 0%, rgba(200,130,20,0.22) 38%, transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
-  animation: orbBreathe 6s ease-in-out infinite;
-  filter: blur(1px);
-}
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(245,200,66,0.20); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(245,200,66,0.40); }
 
-body::after {
-  content: '';
-  position: fixed;
-  width: 360px;
-  height: 360px;
-  left: -80px;
-  bottom: 60px;
-  background: radial-gradient(circle, rgba(200,140,28,0.28) 0%, transparent 68%);
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
-  animation: orbBreathe2 9s ease-in-out infinite 1.5s;
+input, textarea, select {
+  background: var(--bg4);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  padding: 10px 14px;
+  width: 100%;
+  transition: border-color 0.2s, background 0.2s;
+  outline: none;
 }
+input:focus, textarea:focus, select:focus {
+  border-color: rgba(245,200,66,0.50);
+  background: var(--bg5);
+  box-shadow: 0 0 0 3px rgba(245,200,66,0.08);
+}
+input::placeholder, textarea::placeholder { color: var(--text3); }
+textarea { resize: vertical; line-height: 1.65; }
+select option { background: var(--bg3); color: var(--text); }
 
-/* Second right orb via pseudo on root */
-#root::before {
-  content: '';
-  position: fixed;
-  width: 280px;
-  height: 280px;
-  right: -50px;
-  top: 30%;
-  background: radial-gradient(circle, rgba(200,140,28,0.20) 0%, transparent 68%);
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
-  animation: orbBreathe 11s ease-in-out infinite 3s;
-}
-
-#root {
-  position: relative;
-  z-index: 1;
-}
-
-@keyframes orbBreathe {
-  0%,100% { opacity: 0.75; transform: translateX(-50%) scale(1); }
-  50%      { opacity: 1;    transform: translateX(-50%) scale(1.10); }
-}
-
-@keyframes orbBreathe2 {
-  0%,100% { opacity: 0.55; transform: scale(1); }
-  50%      { opacity: 0.85; transform: scale(1.12); }
-}
+button { font-family: inherit; cursor: pointer; transition: all 0.18s; }
 
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: none; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -113,41 +91,5 @@ body::after {
   40%  { opacity: 1; }
   100% { left: 110%; opacity: 0; }
 }
-@keyframes glowPulse {
-  0%,100% { opacity: 0.6; }
-  50%      { opacity: 1; }
-}
 
-.fade-up { animation: fadeUp 0.35s ease both; }
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(201,153,58,0.25); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(201,153,58,0.45); }
-
-/* ── Inputs ── */
-input, textarea, select {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.11);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 14px;
-  padding: 10px 14px;
-  width: 100%;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-  outline: none;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-input:focus, textarea:focus, select:focus {
-  border-color: rgba(201,153,58,0.55);
-  background: rgba(255,255,255,0.09);
-  box-shadow: 0 0 0 3px rgba(201,153,58,0.12), 0 0 16px rgba(201,153,58,0.08);
-}
-input::placeholder, textarea::placeholder { color: var(--text3); }
-textarea { resize: vertical; line-height: 1.65; }
-select option { background: #0d0f16; color: var(--text); }
-
-button { font-family: inherit; cursor: pointer; transition: all 0.2s; }
+.fade-up { animation: fadeUp 0.28s ease both; }
