@@ -2,16 +2,32 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/lib/AuthContext'
 
 const NAV = [
-  { to: '/',          label: 'Dashboard', dot: '#c9993a', icon: '◈'  },
-  { to: '/schedule',  label: 'Schedule',  dot: '#3db88a', icon: '📅' },
-  { to: '/finance',   label: 'Finance',   dot: '#3db88a', icon: '💰' },
-  { to: '/nutrition', label: 'Nutrition', dot: '#d9644a', icon: '🍽' },
-  { to: '/wellness',  label: 'Wellness',  dot: '#4a7be0', icon: '🎯' },
-  { to: '/workout',   label: 'Workout',   dot: '#8a6ed8', icon: '🏋️' },
-  { to: '/journal',   label: 'Journal',   dot: '#c9993a', icon: '✍️' },
-  { to: '/cycle',     label: 'Cycle',     dot: '#d4537e', icon: '🌸' },
-  { to: '/settings',  label: 'Settings',  dot: '#52504d', icon: '⚙️' },
+  { to: '/',          label: 'Dashboard', icon: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z', type: 'path' },
+  { to: '/schedule',  label: 'Schedule',  icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', type: 'stroke' },
+  { to: '/finance',   label: 'Finance',   icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z', type: 'path' },
+  { to: '/nutrition', label: 'Nutrition', icon: 'M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3', type: 'stroke' },
+  { to: '/wellness',  label: 'Wellness',  icon: 'M22 11.08V12a10 10 0 11-5.93-9.14M22 4L12 14.01l-3-3', type: 'stroke' },
+  { to: '/workout',   label: 'Workout',   icon: 'M6.5 6.5h11M6.5 17.5h11M3 10h18M3 14h18', type: 'stroke' },
+  { to: '/journal',   label: 'Journal',   icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z', type: 'stroke' },
+  { to: '/cycle',     label: 'Cycle',     icon: 'M12 2a10 10 0 100 20A10 10 0 0012 2zm0 18a8 8 0 110-16 8 8 0 010 16zm-1-13h2v6h-2zm0 8h2v2h-2z', type: 'path', pink: true },
+  { to: '/settings',  label: 'Settings',  icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z', type: 'stroke' },
 ]
+
+function NavIcon({ item, isActive }) {
+  const color = isActive ? (item.pink ? '#ed93b1' : '#f5c842') : 'rgba(255,255,255,0.38)'
+  if (item.type === 'path') {
+    return (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill={color} style={{ flexShrink: 0 }}>
+        <path d={item.icon} />
+      </svg>
+    )
+  }
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+      <path d={item.icon} />
+    </svg>
+  )
+}
 
 export default function AppShell() {
   const { user, profile, signOut } = useAuth()
@@ -29,124 +45,100 @@ export default function AppShell() {
   return (
     <>
       <style>{`
-        .app-layout {
-          display: flex; height: 100vh; overflow: hidden; background: transparent;
-        }
-        .sidebar {
-          width: 212px; flex-shrink: 0;
-          display: flex; flex-direction: column; padding: 0 0 16px;
-          background: rgba(255,255,255,0.028);
-          border-right: 1px solid rgba(255,255,255,0.07);
-          backdrop-filter: blur(28px);
-          -webkit-backdrop-filter: blur(28px);
-          position: relative; overflow: hidden;
-        }
-        .sidebar::before {
-          content: '';
-          position: absolute;
-          width: 300px; height: 300px;
-          top: -80px; left: -80px;
-          background: radial-gradient(circle, rgba(201,153,58,0.14) 0%, transparent 70%);
-          border-radius: 50%;
-          pointer-events: none;
-          animation: glowPulse 6s ease-in-out infinite;
-        }
-        .folio-nav-link {
-          display: flex; align-items: center; gap: 10px;
-          padding: 9px 14px; border-radius: 12px;
-          text-decoration: none; margin-bottom: 2px;
-          color: rgba(240,232,216,0.38);
-          font-size: 14px; font-weight: 400;
-          transition: all 0.2s;
-          border: 1px solid transparent;
-        }
-        .folio-nav-link:hover {
-          background: rgba(255,255,255,0.05);
-          color: rgba(240,232,216,0.75);
-        }
-        .folio-nav-link.active {
-          background: rgba(201,153,58,0.12);
-          border-color: rgba(201,153,58,0.22);
-          color: #e8b84a;
-          font-weight: 500;
-          box-shadow: 0 0 18px rgba(201,153,58,0.10), inset 0 1px 0 rgba(255,255,255,0.06);
-          text-shadow: 0 0 12px rgba(232,184,74,0.45);
-        }
-        .folio-nav-link.active-cycle {
-          background: rgba(212,83,126,0.10) !important;
-          border-color: rgba(212,83,126,0.22) !important;
-          color: #ed93b1 !important;
-          text-shadow: 0 0 12px rgba(212,83,126,0.40) !important;
-          box-shadow: 0 0 18px rgba(212,83,126,0.10) !important;
-        }
-        .folio-nav-dot {
-          width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
-          background: rgba(255,255,255,0.15); transition: all 0.2s;
-        }
-        .folio-nav-link.active .folio-nav-dot,
-        .folio-nav-link.active-cycle .folio-nav-dot {
-          box-shadow: 0 0 6px currentColor, 0 0 10px currentColor;
-        }
-        .main-content { flex: 1; overflow: auto; padding: 28px 30px; }
-        .mobile-topbar { display: none; }
-        .bottom-nav    { display: none; }
+        .app-layout { display:flex; height:100vh; overflow:hidden; background:#0e0f16; }
 
-        @media (max-width: 640px) {
-          .app-layout { flex-direction: column; height: 100dvh; }
-          .sidebar { display: none; }
-          .main-content { flex: 1; overflow: auto; padding: 14px 14px 84px; }
+        .sidebar {
+          width:220px; flex-shrink:0;
+          display:flex; flex-direction:column; padding:0 0 16px;
+          background:#12131a;
+          border-right:1px solid rgba(255,255,255,0.06);
+        }
+
+        .nav-link {
+          display:flex; align-items:center; gap:10px;
+          padding:10px 14px; border-radius:12px;
+          text-decoration:none; margin-bottom:2px;
+          color:rgba(255,255,255,0.38);
+          font-size:13px; font-weight:500;
+          transition:all 0.18s;
+          border:1px solid transparent;
+        }
+        .nav-link:hover {
+          background:#1c1e2b;
+          color:rgba(255,255,255,0.70);
+        }
+        .nav-link.active {
+          background:#1c1e2b;
+          border-color:rgba(245,200,66,0.18);
+          color:#f5c842;
+          font-weight:600;
+        }
+        .nav-link.active-pink {
+          background:#1c1e2b;
+          border-color:rgba(212,83,126,0.20);
+          color:#ed93b1 !important;
+          font-weight:600;
+        }
+
+        .main-content { flex:1; overflow:auto; padding:28px 30px; }
+        .mobile-topbar { display:none; }
+        .bottom-nav    { display:none; }
+
+        @media (max-width:640px) {
+          .app-layout { flex-direction:column; height:100dvh; }
+          .sidebar { display:none; }
+          .main-content { flex:1; overflow:auto; padding:14px 14px 84px; }
           .mobile-topbar {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 14px 16px 12px;
-            border-bottom: 1px solid rgba(255,255,255,0.07);
-            background: rgba(255,255,255,0.03);
-            backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
-            flex-shrink: 0;
+            display:flex; align-items:center; justify-content:space-between;
+            padding:14px 16px 12px;
+            border-bottom:1px solid rgba(255,255,255,0.06);
+            background:#12131a; flex-shrink:0;
           }
           .bottom-nav {
-            display: flex; position: fixed;
-            bottom: 0; left: 0; right: 0; height: 64px;
-            background: rgba(5,6,10,0.88);
-            border-top: 1px solid rgba(255,255,255,0.08);
-            backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
-            z-index: 100;
-            padding-bottom: env(safe-area-inset-bottom, 0px);
-            overflow-x: auto;
+            display:flex; position:fixed;
+            bottom:0; left:0; right:0; height:64px;
+            background:#12131a;
+            border-top:1px solid rgba(255,255,255,0.07);
+            z-index:100;
+            padding-bottom:env(safe-area-inset-bottom,0px);
+            overflow-x:auto;
           }
           .bottom-nav a {
-            flex: 1; min-width: 44px;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            gap: 2px; text-decoration: none;
-            color: rgba(240,232,216,0.30); font-size: 9px;
-            transition: color 0.15s;
-            -webkit-tap-highlight-color: transparent;
+            flex:1; min-width:44px;
+            display:flex; flex-direction:column;
+            align-items:center; justify-content:center;
+            gap:3px; text-decoration:none;
+            color:rgba(255,255,255,0.28); font-size:9px; font-weight:500;
+            transition:color 0.15s;
+            -webkit-tap-highlight-color:transparent;
           }
-          .bottom-nav a.active { color: #e8b84a; text-shadow: 0 0 10px rgba(232,184,74,0.5); }
-          .bottom-nav a.active-cycle { color: #ed93b1 !important; }
-          .bottom-nav .bn-icon { font-size: 17px; line-height: 1; }
+          .bottom-nav a.active { color:#f5c842; }
+          .bottom-nav a.active-pink { color:#ed93b1 !important; }
+          .bn-icon { font-size:18px; line-height:1; }
         }
       `}</style>
 
       <div className="app-layout">
         <aside className="sidebar">
-          <div style={{ padding: '22px 18px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', position: 'relative', zIndex: 1 }}>
-            <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 24, letterSpacing: '0.05em', color: '#e8b84a', textShadow: '0 0 22px rgba(232,184,74,0.50), 0 0 48px rgba(232,184,74,0.18)' }}>FOLIO</div>
-            <div style={{ fontSize: 11, color: 'rgba(240,232,216,0.28)', marginTop: 3, letterSpacing: '0.05em' }}>Digital Bullet Journal</div>
+          {/* Logo */}
+          <div style={{ padding: '22px 18px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontFamily: 'Plus Jakarta Sans, system-ui, sans-serif', fontSize: 22, fontWeight: 800, color: '#f5c842', letterSpacing: '0.04em' }}>
+              FOLIO
+            </div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)', marginTop: 3, letterSpacing: '0.04em' }}>Digital Bullet Journal</div>
           </div>
 
-          <nav style={{ flex: 1, padding: '12px 10px', overflowY: 'auto', position: 'relative', zIndex: 1 }}>
+          <nav style={{ flex: 1, padding: '12px 10px', overflowY: 'auto' }}>
             {NAV.map(item => (
               <NavLink key={item.to} to={item.to} end={item.to === '/'}
                 className={({ isActive }) => {
-                  if (!isActive) return 'folio-nav-link'
-                  return item.to === '/cycle' ? 'folio-nav-link active-cycle' : 'folio-nav-link active'
+                  if (!isActive) return 'nav-link'
+                  return item.pink ? 'nav-link active-pink' : 'nav-link active'
                 }}
-                style={({ isActive }) => ({ color: isActive ? item.dot : undefined })}
               >
                 {({ isActive }) => (
                   <>
-                    <span className="folio-nav-dot" style={{ background: isActive ? item.dot : undefined }} />
+                    <NavIcon item={item} isActive={isActive} />
                     {item.label}
                   </>
                 )}
@@ -154,19 +146,20 @@ export default function AppShell() {
             ))}
           </nav>
 
-          <div style={{ padding: '10px 10px 0', borderTop: '1px solid rgba(255,255,255,0.06)', position: 'relative', zIndex: 1 }}>
+          {/* User */}
+          <div style={{ padding: '10px 10px 0', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 14px' }}>
-              <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, background: 'rgba(201,153,58,0.14)', border: '1px solid rgba(201,153,58,0.28)', color: '#e8b84a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, boxShadow: '0 0 10px rgba(201,153,58,0.18)' }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, background: 'rgba(245,200,66,0.15)', border: '1px solid rgba(245,200,66,0.30)', color: '#f5c842', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>
                 {initials}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'rgba(240,232,216,0.60)' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'rgba(255,255,255,0.70)' }}>
                   {profile?.full_name || user?.email?.split('@')[0] || 'My Account'}
                 </div>
                 <button onClick={handleSignOut}
-                  style={{ background: 'none', border: 'none', color: 'rgba(240,232,216,0.28)', fontSize: 11, cursor: 'pointer', padding: 0, fontFamily: 'inherit', transition: 'color 0.15s' }}
-                  onMouseEnter={e => e.target.style.color = 'var(--coral2)'}
-                  onMouseLeave={e => e.target.style.color = 'rgba(240,232,216,0.28)'}>
+                  style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.28)', fontSize: 11, cursor: 'pointer', padding: 0, fontFamily: 'inherit', transition: 'color 0.15s' }}
+                  onMouseEnter={e => e.target.style.color = '#f07a62'}
+                  onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.28)'}>
                   Sign out
                 </button>
               </div>
@@ -174,26 +167,34 @@ export default function AppShell() {
           </div>
         </aside>
 
+        {/* Mobile top bar */}
         <div className="mobile-topbar">
-          <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 20, color: '#e8b84a', textShadow: '0 0 18px rgba(232,184,74,0.45)' }}>FOLIO</div>
+          <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: 18, fontWeight: 800, color: '#f5c842' }}>FOLIO</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(201,153,58,0.14)', border: '1px solid rgba(201,153,58,0.28)', color: '#e8b84a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600 }}>{initials}</div>
-            <button onClick={handleSignOut} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 8, color: 'rgba(240,232,216,0.55)', fontSize: 12, cursor: 'pointer', padding: '5px 12px', fontFamily: 'inherit' }}>Sign out</button>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(245,200,66,0.15)', border: '1px solid rgba(245,200,66,0.28)', color: '#f5c842', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>{initials}</div>
+            <button onClick={handleSignOut} style={{ background: '#1c1e2b', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 8, color: 'rgba(255,255,255,0.50)', fontSize: 12, cursor: 'pointer', padding: '5px 12px', fontFamily: 'inherit' }}>Sign out</button>
           </div>
         </div>
 
         <main className="main-content"><Outlet /></main>
 
+        {/* Mobile bottom nav */}
         <nav className="bottom-nav">
           {NAV.map(item => (
             <NavLink key={item.to} to={item.to} end={item.to === '/'}
               className={({ isActive }) => {
                 if (!isActive) return ''
-                return item.to === '/cycle' ? 'active active-cycle' : 'active'
+                return item.pink ? 'active active-pink' : 'active'
               }}
-              style={({ isActive }) => ({ color: isActive ? item.dot : undefined })}
             >
-              <span className="bn-icon">{item.icon}</span>
+              <span className="bn-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24"
+                  fill={item.type === 'path' ? 'currentColor' : 'none'}
+                  stroke={item.type === 'stroke' ? 'currentColor' : 'none'}
+                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d={item.icon} />
+                </svg>
+              </span>
               <span>{item.label}</span>
             </NavLink>
           ))}
