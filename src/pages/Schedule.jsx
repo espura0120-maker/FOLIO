@@ -1,34 +1,41 @@
 import { useState, useEffect, useCallback } from 'react'
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
          addDays, addMonths, subMonths, addWeeks, subWeeks,
-         isSameMonth, isToday, subMonths as sub3 } from 'date-fns'
+         isSameMonth, isToday, differenceInMinutes, parseISO } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/AuthContext'
 import { SectionHeader, Spinner } from '@/components/shared/UI'
 
 const EVENT_COLORS = {
-  finance:  { bg: 'rgba(201,153,58,0.2)',  text: '#e8b85a', dot: '#c9993a' },
-  workout:  { bg: 'rgba(61,184,138,0.2)',  text: '#5dd4a6', dot: '#3db88a' },
-  reminder: { bg: 'rgba(217,100,74,0.2)',  text: '#f07a5e', dot: '#d9644a' },
-  health:   { bg: 'rgba(74,123,224,0.2)',  text: '#6a96f0', dot: '#4a7be0' },
-  personal: { bg: 'rgba(138,110,216,0.2)', text: '#a88ef0', dot: '#8a6ed8' },
-  work:     { bg: 'rgba(29,158,117,0.2)',  text: '#5dcaa5', dot: '#1d9e75' },
+  finance:  { bg: 'rgba(245,200,66,0.18)',  text: '#f5c842', dot: '#f5c842',  border: 'rgba(245,200,66,0.40)'  },
+  workout:  { bg: 'rgba(61,184,138,0.18)',  text: '#5dd4a6', dot: '#3db88a',  border: 'rgba(61,184,138,0.40)'  },
+  reminder: { bg: 'rgba(232,98,74,0.18)',   text: '#f07a62', dot: '#e8624a',  border: 'rgba(232,98,74,0.40)'   },
+  health:   { bg: 'rgba(74,123,224,0.18)',  text: '#6a96f0', dot: '#4a7be0',  border: 'rgba(74,123,224,0.40)'  },
+  personal: { bg: 'rgba(138,110,216,0.18)', text: '#a88ef0', dot: '#8a6ed8',  border: 'rgba(138,110,216,0.40)' },
+  work:     { bg: 'rgba(29,158,117,0.18)',  text: '#5dcaa5', dot: '#1d9e75',  border: 'rgba(29,158,117,0.40)'  },
 }
 
-const DAYS  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
-const HOURS = ['6 AM','7 AM','8 AM','9 AM','10 AM','11 AM','12 PM','1 PM','2 PM','3 PM','4 PM','5 PM','6 PM','7 PM','8 PM','9 PM','10 PM']
+const DAYS     = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+const DAY_H    = 52   // px per hour slot
+const START_H  = 6    // calendar starts at 6am
+const END_H    = 23   // calendar ends at 11pm
+const HOURS    = Array.from({ length: END_H - START_H }, (_, i) => i + START_H)
+
+function parseTime(t) {
+  if (!t) return null
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + (m || 0)
+}
 
 function timeLabel(event) {
   if (event.all_day) return 'All day'
-  if (event.start_time && event.end_time) return event.start_time + ' - ' + event.end_time
+  if (event.start_time && event.end_time) return event.start_time + ' – ' + event.end_time
   return ''
 }
 
 function eventSpansDay(event, dateKey) {
-  if (event.date === dateKey) return true
-  const endDate = event.end_date || event.date
-  if (endDate >= dateKey && event.date <= dateKey) return true
-  return false
+  const end = event.end_date || event.date
+  return event.date <= dateKey && end >= dateKey
 }
 
 function useScheduleEvents() {
@@ -51,193 +58,169 @@ function useScheduleEvents() {
   useEffect(() => { fetch() }, [fetch])
 
   async function addEvent(payload) {
-    const { data, error } = await supabase
-      .from('schedule_events')
-      .insert({ ...payload, user_id: user.id })
-      .select().single()
+    const { data, error } = await supabase.from('schedule_events').insert({ ...payload, user_id: user.id }).select().single()
     if (!error) setEvents(prev => [...prev, data])
-    return { data, error }
   }
-
   async function updateEvent(id, payload) {
-    const { data, error } = await supabase
-      .from('schedule_events')
-      .update(payload)
-      .eq('id', id)
-      .select().single()
+    const { data, error } = await supabase.from('schedule_events').update(payload).eq('id', id).select().single()
     if (!error) setEvents(prev => prev.map(e => e.id === id ? data : e))
-    return { data, error }
   }
-
   async function deleteEvent(id) {
-    const { error } = await supabase
-      .from('schedule_events')
-      .delete()
-      .eq('id', id)
-    if (!error) setEvents(prev => prev.filter(e => e.id !== id))
-    return { error }
+    await supabase.from('schedule_events').delete().eq('id', id)
+    setEvents(prev => prev.filter(e => e.id !== id))
   }
 
-  return { events, loading, addEvent, updateEvent, deleteEvent, refresh: fetch }
+  return { events, loading, addEvent, updateEvent, deleteEvent }
 }
 
-function EventPill({ event, small, onDelete, onEdit }) {
-  const c = EVENT_COLORS[event.category] || EVENT_COLORS.personal
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', background: c.bg, borderRadius: 3, marginBottom: 2, overflow: 'hidden' }}>
-      <div
-        onClick={e => { e.stopPropagation(); onEdit(event) }}
-        style={{ flex: 1, color: c.text, padding: small ? '2px 5px' : '3px 7px', fontSize: small ? 10 : 11, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}
-        title="Click to edit"
-      >
-        {event.all_day ? '[All day] ' : ''}{event.title}
-      </div>
-      <button onClick={e => { e.stopPropagation(); onDelete(event.id) }}
-        style={{ background: 'none', border: 'none', color: c.text, opacity: 0.7, cursor: 'pointer', padding: '0 5px', fontSize: small ? 12 : 14, lineHeight: 1, flexShrink: 0 }}>
-        x
-      </button>
-    </div>
-  )
-}
+// ── MONTH VIEW ─────────────────────────────────────────────────────────────
+// Shows ALL events per day, stacked. Multi-day events show as a continuous bar.
+function MonthView({ current, events, onEdit }) {
+  const monthStart = startOfMonth(current)
+  const monthEnd   = endOfMonth(current)
+  const gridStart  = startOfWeek(monthStart)
+  const gridEnd    = endOfWeek(monthEnd)
 
-function MonthView({ current, events, onDelete, onEdit }) {
-  const start = startOfWeek(startOfMonth(current))
-  const end   = endOfWeek(endOfMonth(current))
-  const days  = []
-  let d = start
-  while (d <= end) { days.push(d); d = addDays(d, 1) }
+  const days = []
+  let d = gridStart
+  while (d <= gridEnd) { days.push(d); d = addDays(d, 1) }
+
+  // Build multi-day event spans for rendering as continuous bars
+  function getMultiDayEvents() {
+    return events.filter(e => {
+      const end = e.end_date || e.date
+      return end > e.date && !e.all_day
+    })
+  }
+
+  function getSingleDayEvents(dateKey) {
+    return events.filter(e => {
+      const end = e.end_date || e.date
+      if (end > e.date) return false  // multi-day handled separately
+      return e.date === dateKey
+    })
+  }
+
+  // For a multi-day event, is this the start/middle/end in the current grid?
+  function getSpanInfo(event, dateKey) {
+    const end = event.end_date || event.date
+    const isStart = event.date === dateKey
+    const isEnd   = end === dateKey
+    const inSpan  = event.date <= dateKey && end >= dateKey
+    return { isStart, isEnd, inSpan }
+  }
+
+  const multiDay = getMultiDayEvents()
+
   return (
-    <div style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border)' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: 'var(--bg3)' }}>
+    <div style={{ borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)' }}>
+      {/* Day headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', background: '#12131a' }}>
         {DAYS.map(day => (
-          <div key={day} style={{ padding: '8px 4px', textAlign: 'center', fontSize: 11, fontWeight: 600, color: 'var(--text3)', letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>
+          <div key={day} style={{ padding: '10px 4px', textAlign: 'center', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.30)', letterSpacing: '0.07em', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
             {day}
           </div>
         ))}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: 'var(--border)' }}>
-        {days.map((day, i) => {
-          const dayKey    = format(day, 'yyyy-MM-dd')
-          const dayEvents = events.filter(e => eventSpansDay(e, dayKey))
-          const today     = isToday(day)
-          const other     = !isSameMonth(day, current)
-          return (
-            <div key={i} style={{ background: other ? 'var(--bg)' : 'var(--bg2)', minHeight: 80, padding: 6 }}>
-              <div style={{ marginBottom: 4 }}>
-                {today
-                  ? <span style={{ background: 'var(--gold)', color: '#1a1200', width: 22, height: 22, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>{format(day, 'd')}</span>
-                  : <span style={{ fontSize: 12, color: other ? 'var(--text3)' : 'var(--text2)' }}>{format(day, 'd')}</span>
-                }
-              </div>
-              {dayEvents.slice(0, 2).map(e => <EventPill key={e.id} event={e} small onDelete={onDelete} onEdit={onEdit} />)}
-              {dayEvents.length > 2 && <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>+{dayEvents.length - 2} more</div>}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
 
-function WeekView({ current, events, onDelete, onEdit }) {
-  const weekStart = startOfWeek(current)
-  const weekDays  = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
-  return (
-    <div style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border)' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', background: 'var(--bg3)', borderBottom: '1px solid var(--border)' }}>
-        <div />
-        {weekDays.map((day, i) => (
-          <div key={i} style={{ padding: '8px 4px', textAlign: 'center', borderLeft: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text3)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{DAYS[i]}</div>
-            <div style={{ fontSize: 18, fontWeight: 500, color: isToday(day) ? 'var(--gold2)' : 'var(--text)', marginTop: 2 }}>{format(day, 'd')}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ background: 'var(--bg2)' }}>
-        {HOURS.map((hour, hi) => {
-          const h = hi + 6
-          return (
-            <div key={hour} style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', borderBottom: '1px solid var(--border)', minHeight: 44 }}>
-              <div style={{ padding: '6px 8px', fontSize: 10, color: 'var(--text3)', textAlign: 'right', borderRight: '1px solid var(--border)' }}>{hour}</div>
-              {weekDays.map((day, di) => {
-                const dayKey    = format(day, 'yyyy-MM-dd')
-                const dayEvents = events.filter(e => {
-                  if (!eventSpansDay(e, dayKey)) return false
-                  if (e.all_day) return h === 6
-                  if (e.start_time) return parseInt(e.start_time.split(':')[0]) === h
-                  return false
-                })
-                return (
-                  <div key={di} style={{ padding: 2, borderLeft: '1px solid var(--border)', minHeight: 44 }}>
-                    {dayEvents.map(e => <EventPill key={e.id} event={e} small onDelete={onDelete} onEdit={onEdit} />)}
-                  </div>
-                )
-              })}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
+      {/* Calendar grid — each row is a week */}
+      {Array.from({ length: days.length / 7 }, (_, weekIdx) => {
+        const weekDays = days.slice(weekIdx * 7, weekIdx * 7 + 7)
 
-function DayView({ current, events, onDelete, onEdit }) {
-  const dateKey      = format(current, 'yyyy-MM-dd')
-  const dayEvents    = events.filter(e => eventSpansDay(e, dateKey))
-  const allDayEvents = dayEvents.filter(e => e.all_day)
-  const timedEvents  = dayEvents.filter(e => !e.all_day)
-  return (
-    <div style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border)' }}>
-      <div style={{ background: 'var(--bg3)', padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 36, color: isToday(current) ? 'var(--gold2)' : 'var(--text)', lineHeight: 1 }}>{format(current, 'd')}</div>
-          <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 3 }}>{format(current, 'EEEE, MMMM yyyy')}</div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 22, fontWeight: 500, color: 'var(--text)' }}>{dayEvents.length}</div>
-          <div style={{ fontSize: 11, color: 'var(--text3)' }}>events</div>
-        </div>
-      </div>
-      {allDayEvents.length > 0 && (
-        <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg3)' }}>
-          <div style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6 }}>All day</div>
-          {allDayEvents.map(e => {
-            const c = EVENT_COLORS[e.category] || EVENT_COLORS.personal
-            return (
-              <div key={e.id} onClick={() => onEdit(e)} style={{ background: c.bg, borderRadius: 8, padding: '7px 12px', marginBottom: 4, borderLeft: '3px solid ' + c.dot, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, cursor: 'pointer' }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: c.text }}>{e.title}</div>
-                  {e.end_date && e.end_date !== e.date && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{e.date} to {e.end_date}</div>}
-                </div>
-                <button onClick={ev => { ev.stopPropagation(); onDelete(e.id) }} style={{ background: 'none', border: 'none', color: c.text, opacity: 0.7, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px' }}>x</button>
-              </div>
-            )
-          })}
-        </div>
-      )}
-      {HOURS.map((hour, hi) => {
-        const h = hi + 6
-        const slotEvents = timedEvents.filter(e => {
-          if (e.start_time) return parseInt(e.start_time.split(':')[0]) === h
-          return false
-        })
         return (
-          <div key={hour} style={{ display: 'flex', gap: 14, padding: '10px 16px 6px', borderBottom: '1px solid var(--border)', minHeight: 52, alignItems: 'flex-start', background: 'var(--bg2)' }}>
-            <div style={{ fontSize: 11, color: 'var(--text3)', width: 40, flexShrink: 0, paddingTop: 2 }}>{hour}</div>
-            <div style={{ flex: 1 }}>
-              {slotEvents.map(e => {
-                const c = EVENT_COLORS[e.category] || EVENT_COLORS.personal
-                return (
-                  <div key={e.id} onClick={() => onEdit(e)} style={{ background: c.bg, borderRadius: 8, padding: '7px 12px', marginBottom: 4, borderLeft: '3px solid ' + c.dot, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, cursor: 'pointer' }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: c.text }}>{e.title}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{timeLabel(e)}{e.note ? ' · ' + e.note : ''}</div>
-                    </div>
-                    <button onClick={ev => { ev.stopPropagation(); onDelete(e.id) }} style={{ background: 'none', border: 'none', color: c.text, opacity: 0.7, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>x</button>
+          <div key={weekIdx} style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 0, background: 'rgba(255,255,255,0.06)' }}>
+            {weekDays.map((day, di) => {
+              const dateKey     = format(day, 'yyyy-MM-dd')
+              const today       = isToday(day)
+              const otherMonth  = !isSameMonth(day, current)
+              const singleEvts  = getSingleDayEvents(dateKey)
+              const allDayEvts  = events.filter(e => e.all_day && eventSpansDay(e, dateKey))
+
+              // Multi-day events that pass through this cell
+              const spanEvts = multiDay.filter(e => {
+                const end = e.end_date || e.date
+                return e.date <= dateKey && end >= dateKey
+              })
+
+              return (
+                <div key={di} style={{
+                  background: otherMonth ? '#0e0f16' : '#1c1e2b',
+                  minHeight: 90, padding: '6px 4px 4px',
+                  borderRight: di < 6 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                  borderBottom: '1px solid rgba(255,255,255,0.06)',
+                  position: 'relative', overflow: 'hidden',
+                }}>
+                  {/* Day number */}
+                  <div style={{ marginBottom: 4, display: 'flex', justifyContent: 'center' }}>
+                    {today ? (
+                      <span style={{ background: '#f5c842', color: '#1a1400', width: 24, height: 24, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800 }}>{format(day, 'd')}</span>
+                    ) : (
+                      <span style={{ fontSize: 12, fontWeight: 500, color: otherMonth ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.55)' }}>{format(day, 'd')}</span>
+                    )}
                   </div>
-                )
-              })}
-            </div>
+
+                  {/* All-day events */}
+                  {allDayEvts.map(e => {
+                    const c = EVENT_COLORS[e.category] || EVENT_COLORS.personal
+                    const end = e.end_date || e.date
+                    const isStart = e.date === dateKey
+                    const isEnd   = end === dateKey
+                    const isMulti = end !== e.date
+                    return (
+                      <div key={e.id} onClick={() => onEdit(e)} style={{
+                        background: c.bg, color: c.text,
+                        borderRadius: isMulti ? (isStart ? '4px 0 0 4px' : isEnd ? '0 4px 4px 0' : '0') : 4,
+                        padding: '2px 5px', fontSize: 10, fontWeight: 600,
+                        marginBottom: 2, cursor: 'pointer',
+                        borderLeft: isStart || !isMulti ? '2px solid ' + c.dot : 'none',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>
+                        {(isStart || !isMulti) ? e.title : ''}
+                      </div>
+                    )
+                  })}
+
+                  {/* Multi-day timed events as continuous bars */}
+                  {spanEvts.map(e => {
+                    const c = EVENT_COLORS[e.category] || EVENT_COLORS.personal
+                    const end = e.end_date || e.date
+                    const isStart = e.date === dateKey
+                    const isEnd   = end === dateKey
+                    return (
+                      <div key={e.id} onClick={() => onEdit(e)} style={{
+                        background: c.bg, color: c.text,
+                        borderRadius: isStart ? '4px 0 0 4px' : isEnd ? '0 4px 4px 0' : 0,
+                        padding: '2px 5px', fontSize: 10, fontWeight: 600,
+                        marginBottom: 2, cursor: 'pointer',
+                        borderLeft: isStart ? '2px solid ' + c.dot : 'none',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        marginLeft: isStart ? 0 : -4,
+                        marginRight: isEnd ? 0 : -4,
+                      }}>
+                        {isStart ? e.title : ''}
+                      </div>
+                    )
+                  })}
+
+                  {/* Single-day timed events */}
+                  {singleEvts.map(e => {
+                    const c = EVENT_COLORS[e.category] || EVENT_COLORS.personal
+                    return (
+                      <div key={e.id} onClick={() => onEdit(e)} style={{
+                        background: c.bg, color: c.text,
+                        borderLeft: '2px solid ' + c.dot,
+                        borderRadius: '0 4px 4px 0',
+                        padding: '2px 5px', fontSize: 10, fontWeight: 600,
+                        marginBottom: 2, cursor: 'pointer',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>
+                        {e.start_time ? e.start_time.slice(0,5) + ' ' : ''}{e.title}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
           </div>
         )
       })}
@@ -245,6 +228,250 @@ function DayView({ current, events, onDelete, onEdit }) {
   )
 }
 
+// ── WEEK VIEW ──────────────────────────────────────────────────────────────
+// Events are absolutely positioned by time with correct pixel height for duration
+function WeekView({ current, events, onEdit }) {
+  const weekStart = startOfWeek(current)
+  const weekDays  = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+
+  function getEventStyle(event) {
+    if (event.all_day) return null
+    const startMins = parseTime(event.start_time)
+    const endMins   = parseTime(event.end_time)
+    if (startMins === null) return null
+    const duration  = endMins ? Math.max(endMins - startMins, 30) : 60
+    const topPx     = ((startMins - START_H * 60) / 60) * DAY_H
+    const heightPx  = (duration / 60) * DAY_H
+    return { top: topPx, height: heightPx }
+  }
+
+  const totalHeight = (END_H - START_H) * DAY_H
+
+  return (
+    <div style={{ borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)' }}>
+      {/* Column headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7,1fr)', background: '#12131a', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div />
+        {weekDays.map((day, i) => (
+          <div key={i} style={{ padding: '10px 4px', textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.07)' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.30)', letterSpacing: '0.07em', textTransform: 'uppercase' }}>{DAYS[i]}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: isToday(day) ? '#f5c842' : 'rgba(255,255,255,0.80)', marginTop: 2 }}>{format(day, 'd')}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* All-day row */}
+      {events.some(e => e.all_day) && (
+        <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7,1fr)', background: '#12131a', borderBottom: '1px solid rgba(255,255,255,0.07)', minHeight: 28 }}>
+          <div style={{ padding: '4px 6px', fontSize: 10, color: 'rgba(255,255,255,0.28)', textAlign: 'right', borderRight: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>all day</div>
+          {weekDays.map((day, di) => {
+            const dateKey = format(day, 'yyyy-MM-dd')
+            const dayAllDay = events.filter(e => e.all_day && eventSpansDay(e, dateKey))
+            return (
+              <div key={di} style={{ borderLeft: '1px solid rgba(255,255,255,0.07)', padding: '2px 3px' }}>
+                {dayAllDay.map(e => {
+                  const c = EVENT_COLORS[e.category] || EVENT_COLORS.personal
+                  const end = e.end_date || e.date
+                  const isStart = e.date === dateKey
+                  const isEnd   = end === dateKey
+                  const isMulti = end !== e.date
+                  return (
+                    <div key={e.id} onClick={() => onEdit(e)} style={{
+                      background: c.bg, color: c.text, fontSize: 10, fontWeight: 600,
+                      padding: '2px 5px', cursor: 'pointer',
+                      borderRadius: isMulti ? (isStart ? '4px 0 0 4px' : isEnd ? '0 4px 4px 0' : 0) : 4,
+                      borderLeft: isStart || !isMulti ? '2px solid ' + c.dot : 'none',
+                      marginLeft: isStart ? 0 : -3, marginRight: isEnd ? 0 : -3,
+                      whiteSpace: 'nowrap', overflow: 'hidden',
+                    }}>{isStart || !isMulti ? e.title : ''}</div>
+                  )
+                })}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Time grid — scrollable */}
+      <div style={{ overflowY: 'auto', maxHeight: 520, background: '#1c1e2b' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7,1fr)', position: 'relative' }}>
+          {/* Hour labels */}
+          <div style={{ position: 'relative' }}>
+            {HOURS.map((h, i) => (
+              <div key={h} style={{ height: DAY_H, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', padding: '4px 8px 0 0', borderRight: '1px solid rgba(255,255,255,0.07)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', lineHeight: 1 }}>
+                  {h < 12 ? h + ' AM' : h === 12 ? '12 PM' : (h - 12) + ' PM'}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Day columns — absolute positioned events */}
+          {weekDays.map((day, di) => {
+            const dateKey   = format(day, 'yyyy-MM-dd')
+            const dayEvents = events.filter(e => !e.all_day && eventSpansDay(e, dateKey))
+
+            return (
+              <div key={di} style={{ position: 'relative', height: totalHeight, borderLeft: '1px solid rgba(255,255,255,0.07)' }}>
+                {/* Hour grid lines */}
+                {HOURS.map(h => (
+                  <div key={h} style={{ position: 'absolute', top: ((h - START_H) * DAY_H), left: 0, right: 0, height: DAY_H, borderBottom: '1px solid rgba(255,255,255,0.05)' }} />
+                ))}
+
+                {/* Events */}
+                {dayEvents.map(e => {
+                  const c    = EVENT_COLORS[e.category] || EVENT_COLORS.personal
+                  const pos  = getEventStyle(e)
+                  if (!pos) return null
+
+                  // For multi-day events, adjust top/height for start/end days
+                  const end      = e.end_date || e.date
+                  const isStart  = e.date === dateKey
+                  const isEnd    = end === dateKey
+                  const isMulti  = end !== e.date
+
+                  let top    = isMulti && !isStart ? 0 : pos.top
+                  let height = isMulti && !isEnd   ? totalHeight - top : pos.height
+
+                  return (
+                    <div key={e.id} onClick={() => onEdit(e)} style={{
+                      position: 'absolute',
+                      top: top + 1, left: 3, right: 3,
+                      height: Math.max(height - 2, 20),
+                      background: c.bg,
+                      borderLeft: '3px solid ' + c.dot,
+                      borderRadius: '0 6px 6px 0',
+                      padding: '3px 6px',
+                      cursor: 'pointer',
+                      overflow: 'hidden',
+                      zIndex: 1,
+                      transition: 'opacity 0.15s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                    >
+                      <div style={{ fontSize: 11, fontWeight: 700, color: c.text, lineHeight: 1.3 }}>{e.title}</div>
+                      {height > 30 && (
+                        <div style={{ fontSize: 10, color: c.text, opacity: 0.75, marginTop: 2 }}>{timeLabel(e)}</div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── DAY VIEW ────────────────────────────────────────────────────────────────
+function DayView({ current, events, onEdit }) {
+  const dateKey   = format(current, 'yyyy-MM-dd')
+  const dayEvents = events.filter(e => eventSpansDay(e, dateKey))
+  const allDay    = dayEvents.filter(e => e.all_day)
+  const timed     = dayEvents.filter(e => !e.all_day)
+  const totalHeight = (END_H - START_H) * DAY_H
+
+  function getEventStyle(event) {
+    const startMins = parseTime(event.start_time)
+    const endMins   = parseTime(event.end_time)
+    if (startMins === null) return null
+    const duration  = endMins ? Math.max(endMins - startMins, 30) : 60
+    const topPx     = ((startMins - START_H * 60) / 60) * DAY_H
+    const heightPx  = (duration / 60) * DAY_H
+    return { top: topPx, height: heightPx }
+  }
+
+  return (
+    <div style={{ borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)' }}>
+      {/* Header */}
+      <div style={{ background: '#12131a', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: 36, fontWeight: 800, color: isToday(current) ? '#f5c842' : '#fff', lineHeight: 1 }}>{format(current, 'd')}</div>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginTop: 3 }}>{format(current, 'EEEE, MMMM yyyy')}</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{dayEvents.length}</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>events</div>
+        </div>
+      </div>
+
+      {/* All-day events */}
+      {allDay.length > 0 && (
+        <div style={{ background: '#12131a', padding: '8px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          {allDay.map(e => {
+            const c = EVENT_COLORS[e.category] || EVENT_COLORS.personal
+            return (
+              <div key={e.id} onClick={() => onEdit(e)} style={{ background: c.bg, borderLeft: '3px solid ' + c.dot, borderRadius: '0 8px 8px 0', padding: '7px 12px', marginBottom: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>{e.title}</div>
+                <div style={{ fontSize: 11, color: c.text, opacity: 0.7 }}>All day</div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Timed grid */}
+      <div style={{ overflowY: 'auto', maxHeight: 520, background: '#1c1e2b' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '56px 1fr', position: 'relative' }}>
+          {/* Hour labels */}
+          <div>
+            {HOURS.map(h => (
+              <div key={h} style={{ height: DAY_H, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', padding: '4px 10px 0 0', borderRight: '1px solid rgba(255,255,255,0.07)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', lineHeight: 1 }}>
+                  {h < 12 ? h + ' AM' : h === 12 ? '12 PM' : (h-12) + ' PM'}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Events column */}
+          <div style={{ position: 'relative', height: totalHeight }}>
+            {HOURS.map(h => (
+              <div key={h} style={{ position: 'absolute', top: (h - START_H) * DAY_H, left: 0, right: 0, height: DAY_H, borderBottom: '1px solid rgba(255,255,255,0.05)' }} />
+            ))}
+            {timed.map(e => {
+              const c   = EVENT_COLORS[e.category] || EVENT_COLORS.personal
+              const pos = getEventStyle(e)
+              if (!pos) return null
+
+              const end     = e.end_date || e.date
+              const isStart = e.date === dateKey
+              const isEnd   = end === dateKey
+              const isMulti = end !== e.date
+              const top    = isMulti && !isStart ? 0 : pos.top
+              const height = isMulti && !isEnd ? totalHeight - top : pos.height
+
+              return (
+                <div key={e.id} onClick={() => onEdit(e)} style={{
+                  position: 'absolute',
+                  top: top + 2, left: 6, right: 6,
+                  height: Math.max(height - 4, 24),
+                  background: c.bg,
+                  borderLeft: '3px solid ' + c.dot,
+                  borderRadius: '0 8px 8px 0',
+                  padding: '6px 12px',
+                  cursor: 'pointer', overflow: 'hidden',
+                  transition: 'opacity 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>{e.title}</div>
+                  {height > 32 && <div style={{ fontSize: 11, color: c.text, opacity: 0.75, marginTop: 2 }}>{timeLabel(e)}{e.note ? ' · ' + e.note : ''}</div>}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── EVENT MODAL ─────────────────────────────────────────────────────────────
 function EventModal({ event, onSave, onDelete, onClose }) {
   const isNew = !event.id
   const [saving, setSaving] = useState(false)
@@ -281,106 +508,83 @@ function EventModal({ event, onSave, onDelete, onClose }) {
     onClose()
   }
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 20 }}>
-      <div style={{ background: 'var(--bg2)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-lg)', padding: 24, width: '100%', maxWidth: 420, maxHeight: '90vh', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-          <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 20, color: 'var(--text)' }}>
-            {isNew ? 'Add Event' : 'Edit Event'}
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>x</button>
-        </div>
+  const C = EVENT_COLORS
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.80)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:200, padding:20 }}>
+      <div style={{ background:'#1c1e2b', border:'1px solid rgba(255,255,255,0.10)', borderRadius:22, padding:26, width:'100%', maxWidth:420, maxHeight:'90vh', overflowY:'auto' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+          <div style={{ fontSize:20, fontWeight:800, color:'#fff' }}>{isNew ? 'Add Event' : 'Edit Event'}</div>
+          <button onClick={onClose} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.40)', fontSize:22, cursor:'pointer', lineHeight:1 }}>x</button>
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
           <div>
-            <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>Event title</label>
+            <label style={{ fontSize:12, color:'rgba(255,255,255,0.40)', display:'block', marginBottom:5, fontWeight:700 }}>Event title</label>
             <input value={form.title} onChange={set('title')} placeholder="e.g. Team meeting" autoFocus />
           </div>
-
           <div>
-            <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 8 }}>Category</label>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {Object.entries(EVENT_COLORS).map(([cat, c]) => (
-                <button key={cat} type="button" onClick={() => setForm(f => ({ ...f, category: cat }))} style={{
-                  padding: '5px 10px',
-                  border: form.category === cat ? '1px solid ' + c.dot : '1px solid var(--border)',
-                  borderRadius: 'var(--radius-sm)',
-                  background: form.category === cat ? c.bg : 'var(--bg3)',
-                  color: form.category === cat ? c.text : 'var(--text3)',
-                  fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize', transition: 'all 0.15s',
+            <label style={{ fontSize:12, color:'rgba(255,255,255,0.40)', display:'block', marginBottom:8, fontWeight:700 }}>Category</label>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+              {Object.entries(C).map(([cat, c]) => (
+                <button key={cat} type="button" onClick={() => setForm(f => ({ ...f, category:cat }))} style={{
+                  padding:'5px 12px', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', textTransform:'capitalize', transition:'all 0.15s',
+                  border: form.category===cat ? '1px solid '+c.dot : '1px solid rgba(255,255,255,0.09)',
+                  background: form.category===cat ? c.bg : '#222435',
+                  color: form.category===cat ? c.text : 'rgba(255,255,255,0.45)',
                 }}>{cat}</button>
               ))}
             </div>
           </div>
-
-          <div style={{ display: 'flex', gap: 16 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text2)' }}>
-              <input type="checkbox" checked={form.all_day} onChange={() => toggle('all_day')}
-                style={{ width: 16, height: 16, accentColor: 'var(--gold)', cursor: 'pointer' }} />
+          <div style={{ display:'flex', gap:16 }}>
+            <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontSize:13, color:'rgba(255,255,255,0.65)' }}>
+              <input type="checkbox" checked={form.all_day} onChange={()=>toggle('all_day')} style={{ width:16, height:16, accentColor:'#f5c842', cursor:'pointer' }} />
               All day
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text2)' }}>
-              <input type="checkbox" checked={form.multi_day} onChange={() => toggle('multi_day')}
-                style={{ width: 16, height: 16, accentColor: 'var(--gold)', cursor: 'pointer' }} />
+            <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontSize:13, color:'rgba(255,255,255,0.65)' }}>
+              <input type="checkbox" checked={form.multi_day} onChange={()=>toggle('multi_day')} style={{ width:16, height:16, accentColor:'#f5c842', cursor:'pointer' }} />
               Multiple days
             </label>
           </div>
-
-          <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>
-                {form.multi_day ? 'Start date' : 'Date'}
-              </label>
-              <input type="date" value={form.date} onChange={set('date')} style={{ colorScheme: 'dark' }} />
+          <div style={{ display:'flex', gap:8 }}>
+            <div style={{ flex:1 }}>
+              <label style={{ fontSize:12, color:'rgba(255,255,255,0.40)', display:'block', marginBottom:5, fontWeight:700 }}>{form.multi_day ? 'Start date' : 'Date'}</label>
+              <input type="date" value={form.date} onChange={set('date')} style={{ colorScheme:'dark' }} />
             </div>
             {form.multi_day && (
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>End date</label>
-                <input type="date" value={form.end_date} onChange={set('end_date')} min={form.date} style={{ colorScheme: 'dark' }} />
+              <div style={{ flex:1 }}>
+                <label style={{ fontSize:12, color:'rgba(255,255,255,0.40)', display:'block', marginBottom:5, fontWeight:700 }}>End date</label>
+                <input type="date" value={form.end_date} onChange={set('end_date')} min={form.date} style={{ colorScheme:'dark' }} />
               </div>
             )}
           </div>
-
           {!form.all_day && (
-            <div style={{ display: 'flex', gap: 8 }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>Start time</label>
-                <input type="time" value={form.start_time} onChange={set('start_time')} style={{ colorScheme: 'dark' }} />
+            <div style={{ display:'flex', gap:8 }}>
+              <div style={{ flex:1 }}>
+                <label style={{ fontSize:12, color:'rgba(255,255,255,0.40)', display:'block', marginBottom:5, fontWeight:700 }}>Start time</label>
+                <input type="time" value={form.start_time} onChange={set('start_time')} style={{ colorScheme:'dark' }} />
               </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>End time</label>
-                <input type="time" value={form.end_time} onChange={set('end_time')} style={{ colorScheme: 'dark' }} />
+              <div style={{ flex:1 }}>
+                <label style={{ fontSize:12, color:'rgba(255,255,255,0.40)', display:'block', marginBottom:5, fontWeight:700 }}>End time</label>
+                <input type="time" value={form.end_time} onChange={set('end_time')} style={{ colorScheme:'dark' }} />
               </div>
             </div>
           )}
-
           <div>
-            <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5 }}>Note (optional)</label>
-            <input value={form.note} onChange={set('note')} placeholder="e.g. Meeting room 3 / bring laptop" />
+            <label style={{ fontSize:12, color:'rgba(255,255,255,0.40)', display:'block', marginBottom:5, fontWeight:700 }}>Note (optional)</label>
+            <input value={form.note} onChange={set('note')} placeholder="e.g. Meeting room 3" />
           </div>
-
           <button onClick={handleSave} disabled={saving} style={{
-            padding: '11px 16px',
-            background: form.title.trim() ? 'var(--gold)' : 'var(--bg4)',
-            border: 'none', borderRadius: 'var(--radius-sm)',
-            color: form.title.trim() ? '#1a1200' : 'var(--text3)',
-            fontSize: 14, fontWeight: 600,
-            cursor: form.title.trim() ? 'pointer' : 'not-allowed',
-            fontFamily: 'inherit', width: '100%', transition: 'all 0.15s',
-            opacity: saving ? 0.7 : 1,
+            padding:'12px 16px', background:'#f5c842', border:'none', borderRadius:12,
+            color:'#1a1400', fontSize:14, fontWeight:700, cursor:saving?'not-allowed':'pointer',
+            fontFamily:'inherit', width:'100%', opacity:saving?0.7:1,
           }}>
             {saving ? 'Saving...' : isNew ? 'Save Event' : 'Save Changes'}
           </button>
-
           {!isNew && (
-            <button onClick={async () => { await onDelete(event.id); onClose() }} style={{
-              padding: '10px 16px', background: 'rgba(217,100,74,0.1)',
-              border: '1px solid rgba(217,100,74,0.3)', borderRadius: 'var(--radius-sm)',
-              color: 'var(--coral2)', fontSize: 14, fontWeight: 500,
-              cursor: 'pointer', fontFamily: 'inherit', width: '100%',
-            }}>
-              Delete Event
-            </button>
+            <button onClick={async()=>{ await onDelete(event.id); onClose() }} style={{
+              padding:'10px', background:'rgba(232,98,74,0.10)', border:'1px solid rgba(232,98,74,0.22)',
+              borderRadius:12, color:'#f07a62', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit', width:'100%',
+            }}>Delete Event</button>
           )}
         </div>
       </div>
@@ -388,89 +592,78 @@ function EventModal({ event, onSave, onDelete, onClose }) {
   )
 }
 
+// ── MAIN ────────────────────────────────────────────────────────────────────
 export default function Schedule() {
-  const [view, setView]             = useState('month')
-  const [current, setCurrent]       = useState(new Date())
+  const [view, setView]           = useState('month')
+  const [current, setCurrent]     = useState(new Date())
   const [modalEvent, setModalEvent] = useState(null)
   const { events, loading, addEvent, updateEvent, deleteEvent } = useScheduleEvents()
 
   async function handleSave(id, payload) {
-    if (id) {
-      await updateEvent(id, payload)
-    } else {
-      await addEvent(payload)
-    }
+    if (id) await updateEvent(id, payload)
+    else    await addEvent(payload)
   }
 
   function navigate(dir) {
-    if (view === 'month') setCurrent(dir > 0 ? addMonths(current, 1) : subMonths(current, 1))
-    else if (view === 'week') setCurrent(dir > 0 ? addWeeks(current, 1) : subWeeks(current, 1))
-    else setCurrent(addDays(current, dir))
+    if (view==='month') setCurrent(dir>0?addMonths(current,1):subMonths(current,1))
+    else if (view==='week') setCurrent(dir>0?addWeeks(current,1):subWeeks(current,1))
+    else setCurrent(addDays(current,dir))
   }
 
   function headerLabel() {
-    if (view === 'month') return format(current, 'MMMM yyyy')
-    if (view === 'week') {
-      const ws = startOfWeek(current)
-      const we = endOfWeek(current)
-      return format(ws, 'MMM d') + ' - ' + format(we, 'MMM d, yyyy')
-    }
-    return format(current, 'EEEE, MMMM d')
+    if (view==='month') return format(current,'MMMM yyyy')
+    if (view==='week') return format(startOfWeek(current),'MMM d') + ' – ' + format(endOfWeek(current),'MMM d, yyyy')
+    return format(current,'EEEE, MMMM d')
   }
 
   return (
     <div className="fade-up">
       {modalEvent && (
-        <EventModal
-          event={modalEvent}
-          onSave={handleSave}
-          onDelete={deleteEvent}
-          onClose={() => setModalEvent(null)}
-        />
+        <EventModal event={modalEvent} onSave={handleSave} onDelete={deleteEvent} onClose={()=>setModalEvent(null)} />
       )}
 
       <SectionHeader title="Schedule" sub="Plan your days, weeks & months" />
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={() => navigate(-1)} style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-sm)', color: 'var(--text2)', fontSize: 13, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit' }}>Prev</button>
-          <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', minWidth: 180, textAlign: 'center' }}>{headerLabel()}</span>
-          <button onClick={() => navigate(1)} style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-sm)', color: 'var(--text2)', fontSize: 13, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit' }}>Next</button>
-          <button onClick={() => setCurrent(new Date())} style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text3)', fontSize: 12, padding: '6px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>Today</button>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:10 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <button onClick={()=>navigate(-1)} style={{ background:'#1c1e2b', border:'1px solid rgba(255,255,255,0.09)', borderRadius:10, color:'rgba(255,255,255,0.60)', fontSize:13, fontWeight:600, padding:'7px 14px', cursor:'pointer', fontFamily:'inherit' }}>← Prev</button>
+          <span style={{ fontSize:15, fontWeight:700, color:'#fff', minWidth:200, textAlign:'center' }}>{headerLabel()}</span>
+          <button onClick={()=>navigate(1)} style={{ background:'#1c1e2b', border:'1px solid rgba(255,255,255,0.09)', borderRadius:10, color:'rgba(255,255,255,0.60)', fontSize:13, fontWeight:600, padding:'7px 14px', cursor:'pointer', fontFamily:'inherit' }}>Next →</button>
+          <button onClick={()=>setCurrent(new Date())} style={{ background:'transparent', border:'1px solid rgba(255,255,255,0.09)', borderRadius:10, color:'rgba(255,255,255,0.38)', fontSize:12, padding:'7px 12px', cursor:'pointer', fontFamily:'inherit' }}>Today</button>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ display: 'flex', background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: 3, gap: 2 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <div style={{ display:'flex', background:'#1c1e2b', borderRadius:10, padding:3, gap:2 }}>
             {['Day','Week','Month'].map(v => (
-              <button key={v} onClick={() => setView(v.toLowerCase())} style={{
-                padding: '6px 14px', borderRadius: 'var(--radius-sm)', border: 'none',
-                background: view === v.toLowerCase() ? 'var(--gold)' : 'transparent',
-                color: view === v.toLowerCase() ? '#1a1200' : 'var(--text3)',
-                fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+              <button key={v} onClick={()=>setView(v.toLowerCase())} style={{
+                padding:'7px 16px', borderRadius:8, border:'none', fontFamily:'inherit',
+                background: view===v.toLowerCase() ? '#f5c842' : 'transparent',
+                color: view===v.toLowerCase() ? '#1a1400' : 'rgba(255,255,255,0.45)',
+                fontSize:13, fontWeight:700, cursor:'pointer', transition:'all 0.18s',
               }}>{v}</button>
             ))}
           </div>
-          <button onClick={() => setModalEvent({ date: format(current, 'yyyy-MM-dd') })} style={{
-            background: 'var(--gold)', border: 'none', borderRadius: 'var(--radius-sm)',
-            color: '#1a1200', fontSize: 13, fontWeight: 600, padding: '7px 14px',
-            cursor: 'pointer', fontFamily: 'inherit',
+          <button onClick={()=>setModalEvent({ date:format(current,'yyyy-MM-dd') })} style={{
+            background:'#f5c842', border:'none', borderRadius:10,
+            color:'#1a1400', fontSize:13, fontWeight:700, padding:'8px 16px',
+            cursor:'pointer', fontFamily:'inherit',
           }}>+ Add Event</button>
         </div>
       </div>
 
       {loading
-        ? <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner size={28} /></div>
+        ? <div style={{ display:'flex', justifyContent:'center', padding:60 }}><Spinner size={28} /></div>
         : <>
-          {view === 'month' && <MonthView current={current} events={events} onDelete={deleteEvent} onEdit={setModalEvent} />}
-          {view === 'week'  && <WeekView  current={current} events={events} onDelete={deleteEvent} onEdit={setModalEvent} />}
-          {view === 'day'   && <DayView   current={current} events={events} onDelete={deleteEvent} onEdit={setModalEvent} />}
+          {view==='month' && <MonthView current={current} events={events} onEdit={setModalEvent} />}
+          {view==='week'  && <WeekView  current={current} events={events} onEdit={setModalEvent} />}
+          {view==='day'   && <DayView   current={current} events={events} onEdit={setModalEvent} />}
         </>
       }
 
-      <div style={{ display: 'flex', gap: 14, marginTop: 14, flexWrap: 'wrap' }}>
-        {Object.entries(EVENT_COLORS).map(([cat, c]) => (
-          <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text3)' }}>
-            <div style={{ width: 8, height: 8, borderRadius: 2, background: c.dot }} />
-            <span style={{ textTransform: 'capitalize' }}>{cat}</span>
+      <div style={{ display:'flex', gap:14, marginTop:14, flexWrap:'wrap' }}>
+        {Object.entries(EVENT_COLORS).map(([cat,c]) => (
+          <div key={cat} style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'rgba(255,255,255,0.38)', fontWeight:600 }}>
+            <div style={{ width:8, height:8, borderRadius:2, background:c.dot }} />
+            <span style={{ textTransform:'capitalize' }}>{cat}</span>
           </div>
         ))}
       </div>
