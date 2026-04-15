@@ -95,8 +95,9 @@ function MonthView({ current, events, onEdit }) {
 
   function getSingleDayEvents(dateKey) {
     return events.filter(e => {
+      if (e.all_day) return false      // all-day handled separately
       const end = e.end_date || e.date
-      if (end > e.date) return false  // multi-day handled separately
+      if (end > e.date) return false   // multi-day handled separately
       return e.date === dateKey
     })
   }
@@ -138,6 +139,7 @@ function MonthView({ current, events, onEdit }) {
 
               // Multi-day events that pass through this cell
               const spanEvts = multiDay.filter(e => {
+                if (e.all_day) return false      // all-day handled separately
                 const end = e.end_date || e.date
                 return e.date <= dateKey && end >= dateKey
               })
