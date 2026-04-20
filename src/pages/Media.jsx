@@ -71,15 +71,34 @@ function StarRating({ value, onChange, size = 20 }) {
   )
 }
 
-// ── All search routed through Supabase Edge Function (bypasses CORS) ─────
+// ── Search via Supabase Edge Function (bypasses CORS) ────────────────────
+const SUPA_URL = 'https://pzezpdlnpyozomqgtltt.supabase.co'
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6ZXpwZGxucHlvem9tcWd0bHR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NDUwNjcsImV4cCI6MjA5MTIyMTA2N30.zt-AOMqpuz0cuZrWxdXhC6KqKwmhBcHUPz2zH9pcCGE'
+
 async function searchMedia(query, type) {
   try {
-    const { data, error } = await supabase.functions.invoke('search-media', {
-      body: { query, type }
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = (session && session.access_token) ? session.access_token : SUPA_KEY
+
+    const r = await fetch(SUPA_URL + '/functions/v1/search-media', {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey':        SUPA_KEY,
+      },
+      body: JSON.stringify({ query, type }),
     })
-    if (error) throw error
+
+    if (!r.ok) {
+      console.error('search-media error:', r.status, await r.text())
+      return []
+    }
+
+    const data = await r.json()
     return Array.isArray(data) ? data : []
-  } catch {
+  } catch (e) {
+    console.error('searchMedia error:', e)
     return []
   }
 }
