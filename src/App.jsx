@@ -12,6 +12,7 @@ import Nutrition  from '@/pages/Nutrition'
 import Wellness   from '@/pages/Wellness'
 import Workout    from '@/pages/Workout'
 import Journal    from '@/pages/Journal'
+import Media     from '@/pages/Media'
 import Cycle      from '@/pages/Cycle'
 import Settings   from '@/pages/Settings'
 
@@ -22,17 +23,25 @@ export default function App() {
         <ToastProvider>
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
-            <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
-              <Route index               element={<Dashboard />} />
-              <Route path="insights"     element={<Insights />} />
-              <Route path="schedule"     element={<Schedule />} />
-              <Route path="finance"      element={<Finance />} />
-              <Route path="nutrition"    element={<Nutrition />} />
-              <Route path="wellness"     element={<Wellness />} />
-              <Route path="workout"      element={<Workout />} />
-              <Route path="journal"      element={<Journal />} />
-              <Route path="cycle"        element={<Cycle />} />
-              <Route path="settings"     element={<Settings />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <AppShell />
+                </ProtectedRoute>
+              }
+            >
+              <Route index             element={<Dashboard />} />
+              <Route path="insights"   element={<Insights />} />
+              <Route path="schedule"   element={<Schedule />} />
+              <Route path="finance"    element={<Finance />} />
+              <Route path="nutrition"  element={<Nutrition />} />
+              <Route path="wellness"   element={<Wellness />} />
+              <Route path="workout"    element={<Workout />} />
+              <Route path="journal"    element={<Journal />} />
+              <Route path="media"     element={<Media />} />
+              <Route path="cycle"      element={<Cycle />} />
+              <Route path="settings"   element={<Settings />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
