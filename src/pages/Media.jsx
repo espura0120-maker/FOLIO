@@ -409,19 +409,47 @@ export default function Media() {
   const [query, setQuery]             = useState('')
   const [results, setResults]         = useState([])
   const [searching, setSearching]     = useState(false)
+  const [searchError, setSearchError] = useState('')
   const [selectedItem, setSelectedItem] = useState(null)
   const [editLog, setEditLog]         = useState(null)
   const [sortBy, setSortBy]           = useState('recent')
   const searchTimer = useRef(null)
 
-  // Debounced search
+  // Debounced search — calls edge function directly with hardcoded keys
   useEffect(() => {
-    if (!query.trim() || query.length < 2) { setResults([]); return }
+    if (!query.trim() || query.length < 2) { setResults([]); setSearchError(''); return }
     clearTimeout(searchTimer.current)
     searchTimer.current = setTimeout(async () => {
       setSearching(true)
-      const res = await searchMedia(query, searchType)
-      setResults(res)
+      setSearchError('')
+      try {
+        const sess = await supabase.auth.getSession()
+        const token = (sess.data && sess.data.session && sess.data.session.access_token)
+          ? sess.data.session.access_token
+          : SUPA_KEY
+        const r = await fetch(SUPA_URL + '/functions/v1/search-media', {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': 'Bearer ' + token,
+            'apikey':        SUPA_KEY,
+          },
+          body: JSON.stringify({ query: query, type: searchType }),
+        })
+        if (!r.ok) {
+          const txt = await r.text()
+          setSearchError('Error ' + r.status + ': ' + txt.slice(0, 150))
+          setResults([])
+        } else {
+          const data = await r.json()
+          const arr = Array.isArray(data) ? data : []
+          setResults(arr)
+          if (arr.length === 0) setSearchError('No results for "' + query + '" — is the edge function deployed?')
+        }
+      } catch (e) {
+        setSearchError('Fetch failed: ' + e.message)
+        setResults([])
+      }
       setSearching(false)
     }, 400)
     return () => clearTimeout(searchTimer.current)
@@ -519,7 +547,13 @@ export default function Media() {
             </div>
           )}
 
-          {query.length >= 2 && !searching && results.length === 0 && (
+          {query.length >= 2 && !searching && searchError && (
+            <div style={{ padding: '10px 14px', background: 'rgba(232,98,74,0.10)', border: '1px solid rgba(232,98,74,0.22)', borderRadius: 10, fontSize: 12, color: '#f07a62', marginTop: 8 }}>
+              {searchError}
+            </div>
+          )}
+
+          {query.length >= 2 && !searching && results.length === 0 && !searchError && (
             <div style={{ textAlign: 'center', padding: '20px 0', fontSize: 13, color: 'rgba(255,255,255,0.30)' }}>
               No results for "{query}"
             </div>
