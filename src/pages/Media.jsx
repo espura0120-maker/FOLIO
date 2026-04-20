@@ -71,62 +71,17 @@ function StarRating({ value, onChange, size = 20 }) {
   )
 }
 
-// ── iTunes movie search (free, no key) ───────────────────────────────────
-async function searchMovies(query) {
-  const r = await fetch(
-    'https://itunes.apple.com/search?term=' + encodeURIComponent(query) +
-    '&media=movie&entity=movie&limit=8'
-  )
-  const d = await r.json()
-  return (d.results || []).map(item => ({
-    external_id:  String(item.trackId || ''),
-    title:        item.trackName || item.collectionName || '',
-    subtitle:     item.artistName || '',
-    year:         (item.releaseDate || '').slice(0, 4),
-    poster_url:   item.artworkUrl100
-      ? item.artworkUrl100.replace('100x100bb', '400x600bb')
-      : null,
-    description:  item.longDescription || item.shortDescription || '',
-    genre:        item.primaryGenreName || '',
-    type:         'movie',
-  }))
-}
-
-// ── TVMaze TV search (free, no key) ──────────────────────────────────────
-async function searchTV(query) {
-  const r = await fetch(
-    'https://api.tvmaze.com/search/shows?q=' + encodeURIComponent(query)
-  )
-  const d = await r.json()
-  return (d || []).slice(0, 8).map(item => {
-    const show = item.show || item
-    return {
-      external_id:  String(show.id || ''),
-      title:        show.name || '',
-      subtitle:     show.network?.name || show.webChannel?.name || '',
-      year:         (show.premiered || '').slice(0, 4),
-      poster_url:   show.image?.original || show.image?.medium || null,
-      description:  show.summary ? show.summary.replace(/<[^>]+>/g, '') : '',
-      genre:        (show.genres || []).slice(0, 2).join(', '),
-      type:         'tv',
-    }
-  })
-}
-
-// ── Open Library book search ─────────────────────────────────────────────────
-async function searchBooks(query) {
-  const r = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=8&fields=key,title,author_name,first_publish_year,cover_i,subject`)
-  const d = await r.json()
-  return (d.docs || []).slice(0, 8).map(item => ({
-    external_id:  item.key,
-    title:        item.title,
-    subtitle:     item.author_name ? item.author_name[0] : '',
-    year:         String(item.first_publish_year || ''),
-    poster_url:   item.cover_i ? `${OL_COVER}${item.cover_i}-M.jpg` : null,
-    description:  '',
-    genre:        item.subject ? item.subject.slice(0, 3).join(', ') : '',
-    type:         'book',
-  }))
+// ── All search routed through Supabase Edge Function (bypasses CORS) ─────
+async function searchMedia(query, type) {
+  try {
+    const { data, error } = await supabase.functions.invoke('search-media', {
+      body: { query, type }
+    })
+    if (error) throw error
+    return Array.isArray(data) ? data : []
+  } catch {
+    return []
+  }
 }
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
@@ -446,16 +401,10 @@ export default function Media() {
     clearTimeout(searchTimer.current)
     searchTimer.current = setTimeout(async () => {
       setSearching(true)
-      try {
-        const res = searchType === 'book'
-          ? await searchBooks(query)
-          : searchType === 'tv'
-            ? await searchTV(query)
-            : await searchMovies(query)
-        setResults(res)
-      } catch { setResults([]) }
+      const res = await searchMedia(query, searchType)
+      setResults(res)
       setSearching(false)
-    }, 380)
+    }, 400)
     return () => clearTimeout(searchTimer.current)
   }, [query, searchType])
 
