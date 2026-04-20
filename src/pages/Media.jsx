@@ -4,10 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/AuthContext'
 import { SectionHeader, Card, CardTitle, Grid, Button, EmptyState, Spinner } from '@/components/shared/UI'
 
-// ── Replace this with your TMDB API key from themoviedb.org ──────────────
-const TMDB_KEY = 'YOUR_TMDB_API_KEY'
-const TMDB     = 'https://api.themoviedb.org/3'
-const IMG      = 'https://image.tmdb.org/t/p/w500'
+// ── Free APIs — no signup or key needed ──────────────────────────────────
 const OL_COVER = 'https://covers.openlibrary.org/b/id/'
 
 const TYPES = [
@@ -74,21 +71,46 @@ function StarRating({ value, onChange, size = 20 }) {
   )
 }
 
-// ── TMDB search ──────────────────────────────────────────────────────────────
-async function searchTMDB(query, type) {
-  if (!TMDB_KEY || TMDB_KEY === 'YOUR_TMDB_API_KEY') return []
-  const endpoint = type === 'movie' ? 'movie' : 'tv'
-  const r = await fetch(`${TMDB}/${endpoint === 'movie' ? 'search/movie' : 'search/tv'}?api_key=${TMDB_KEY}&query=${encodeURIComponent(query)}&page=1`)
+// ── iTunes movie search (free, no key) ───────────────────────────────────
+async function searchMovies(query) {
+  const r = await fetch(
+    'https://itunes.apple.com/search?term=' + encodeURIComponent(query) +
+    '&media=movie&entity=movie&limit=8'
+  )
   const d = await r.json()
-  return (d.results || []).slice(0, 8).map(item => ({
-    external_id:  String(item.id),
-    title:        item.title || item.name,
-    year:         (item.release_date || item.first_air_date || '').slice(0, 4),
-    poster_url:   item.poster_path ? IMG + item.poster_path : null,
-    description:  item.overview,
-    genre:        '',
-    type,
+  return (d.results || []).map(item => ({
+    external_id:  String(item.trackId || ''),
+    title:        item.trackName || item.collectionName || '',
+    subtitle:     item.artistName || '',
+    year:         (item.releaseDate || '').slice(0, 4),
+    poster_url:   item.artworkUrl100
+      ? item.artworkUrl100.replace('100x100bb', '400x600bb')
+      : null,
+    description:  item.longDescription || item.shortDescription || '',
+    genre:        item.primaryGenreName || '',
+    type:         'movie',
   }))
+}
+
+// ── TVMaze TV search (free, no key) ──────────────────────────────────────
+async function searchTV(query) {
+  const r = await fetch(
+    'https://api.tvmaze.com/search/shows?q=' + encodeURIComponent(query)
+  )
+  const d = await r.json()
+  return (d || []).slice(0, 8).map(item => {
+    const show = item.show || item
+    return {
+      external_id:  String(show.id || ''),
+      title:        show.name || '',
+      subtitle:     show.network?.name || show.webChannel?.name || '',
+      year:         (show.premiered || '').slice(0, 4),
+      poster_url:   show.image?.original || show.image?.medium || null,
+      description:  show.summary ? show.summary.replace(/<[^>]+>/g, '') : '',
+      genre:        (show.genres || []).slice(0, 2).join(', '),
+      type:         'tv',
+    }
+  })
 }
 
 // ── Open Library book search ─────────────────────────────────────────────────
@@ -427,7 +449,9 @@ export default function Media() {
       try {
         const res = searchType === 'book'
           ? await searchBooks(query)
-          : await searchTMDB(query, searchType)
+          : searchType === 'tv'
+            ? await searchTV(query)
+            : await searchMovies(query)
         setResults(res)
       } catch { setResults([]) }
       setSearching(false)
@@ -466,8 +490,6 @@ export default function Media() {
       ? (logs.filter(l => l.rating).reduce((s, l) => s + +l.rating, 0) / logs.filter(l => l.rating).length).toFixed(1)
       : '—',
   }
-
-  const noTMDB = TMDB_KEY === 'YOUR_TMDB_API_KEY'
 
   return (
     <div className="fade-up">
@@ -519,13 +541,6 @@ export default function Media() {
               }
             </div>
           </div>
-
-          {/* TMDB key warning */}
-          {noTMDB && (searchType === 'movie' || searchType === 'tv') && (
-            <div style={{ padding: '10px 14px', background: 'rgba(245,200,66,0.08)', border: '1px solid rgba(245,200,66,0.20)', borderRadius: 10, fontSize: 12, color: '#f5c842', marginBottom: 10 }}>
-              ⚠️ Add your TMDB API key to Media.jsx line 8 to enable movie & TV search. Books work without a key!
-            </div>
-          )}
 
           {/* Results */}
           {results.length > 0 && (
