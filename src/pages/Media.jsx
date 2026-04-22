@@ -62,6 +62,24 @@ async function searchBooks(query) {
   })).filter(b => b.title)
 }
 
+async function searchMusic(query) {
+  const r = await fetch(
+    'https://itunes.apple.com/search?term=' + encodeURIComponent(query) +
+    '&media=music&entity=album&limit=8&country=us'
+  )
+  const d = await r.json()
+  return (d.results || []).filter(i => i.collectionName).map(i => ({
+    external_id: String(i.collectionId || ''),
+    title:       i.collectionName || '',
+    subtitle:    i.artistName || '',
+    year:        (i.releaseDate || '').slice(0, 4),
+    poster_url:  i.artworkUrl100 ? i.artworkUrl100.replace('100x100bb', '600x600bb') : null,
+    description: '',
+    genre:       i.primaryGenreName || '',
+    type:        'music',
+  }))
+}
+
 // ── Status config ─────────────────────────────────────────────────────────
 const STATUSES = {
   movie: [
@@ -80,6 +98,12 @@ const STATUSES = {
     { id:'completed',   label:'Read',            color:'#5dd4a6' },
     { id:'in_progress', label:'Reading',          color:'#6a96f0' },
     { id:'want_to',     label:'Want to Read',     color:'#f5c842' },
+    { id:'dropped',     label:'Dropped',          color:'#f07a62' },
+  ],
+  music: [
+    { id:'completed',   label:'Listened',        color:'#5dd4a6' },
+    { id:'in_progress', label:'Listening',        color:'#6a96f0' },
+    { id:'want_to',     label:'Want to Listen',   color:'#f5c842' },
     { id:'dropped',     label:'Dropped',          color:'#f07a62' },
   ],
 }
@@ -308,9 +332,10 @@ export default function Media() {
       setResults([])
       try {
         let arr = []
-        if (searchType === 'movie')     arr = await searchMovies(query)
-        else if (searchType === 'tv')   arr = await searchTV(query)
-        else if (searchType === 'book') arr = await searchBooks(query)
+        if (searchType === 'movie')      arr = await searchMovies(query)
+        else if (searchType === 'tv')    arr = await searchTV(query)
+        else if (searchType === 'book')  arr = await searchBooks(query)
+        else if (searchType === 'music') arr = await searchMusic(query)
         setResults(arr)
         if (arr.length === 0) setMsg('No results found for "' + query + '"')
       } catch (e) {
@@ -340,23 +365,31 @@ export default function Media() {
       return new Date(b.created_at)-new Date(a.created_at)
     })
 
-  const stats = {
-    movies: logs.filter(l=>l.type==='movie'&&l.status==='completed').length,
-    tv:     logs.filter(l=>l.type==='tv'   &&l.status==='completed').length,
-    books:  logs.filter(l=>l.type==='book' &&l.status==='completed').length,
-    active: logs.filter(l=>l.status==='in_progress').length,
-    want:   logs.filter(l=>l.status==='want_to').length,
-    avg:    logs.filter(l=>l.rating).length
-      ? (logs.filter(l=>l.rating).reduce((s,l)=>s+ +l.rating,0)/logs.filter(l=>l.rating).length).toFixed(1)
-      : '—',
+  function catStats(type) {
+    const cat = logs.filter(l => l.type === type)
+    const rated = cat.filter(l => l.rating)
+    return {
+      completed:   cat.filter(l => l.status === 'completed').length,
+      in_progress: cat.filter(l => l.status === 'in_progress').length,
+      want_to:     cat.filter(l => l.status === 'want_to').length,
+      dropped:     cat.filter(l => l.status === 'dropped').length,
+      total:       cat.length,
+      avg:         rated.length ? (rated.reduce((s,l) => s + +l.rating, 0) / rated.length).toFixed(1) : '—',
+    }
   }
+  const catConfig = [
+    { type:'movie', label:'Movies',    icon:'🎬', color:'#6a96f0', statuses: STATUSES.movie  },
+    { type:'tv',    label:'TV Shows',  icon:'📺', color:'#a88ef0', statuses: STATUSES.tv     },
+    { type:'book',  label:'Books',     icon:'📚', color:'#5dd4a6', statuses: STATUSES.book   },
+    { type:'music', label:'Music',     icon:'🎵', color:'#f07a62', statuses: STATUSES.music  },
+  ]
 
   return (
     <div className="fade-up">
       {selected && <LogModal item={selected} onSave={async f=>{await handleAdd(f);setSelected(null)}} onClose={()=>setSelected(null)} />}
       {editing  && <LogModal existing={editing} onSave={handleEdit} onClose={()=>setEditing(null)} />}
 
-      <SectionHeader title="Media" sub="Movies, TV shows and books" accent="#6a96f0"
+      <SectionHeader title="Media" sub="Movies, TV, books and music" accent="#6a96f0"
         action={
           <button onClick={()=>{setShowSearch(s=>!s);setQuery('');setResults([]);setMsg('')}}
             style={{ background:showSearch?'#f5c842':'rgba(245,200,66,0.14)', border:'1px solid rgba(245,200,66,0.28)', borderRadius:10, color:showSearch?'#1a1400':'#f5c842', fontSize:13, fontWeight:700, padding:'8px 18px', cursor:'pointer', fontFamily:'inherit', transition:'all 0.18s' }}>
@@ -369,7 +402,7 @@ export default function Media() {
       {showSearch && (
         <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:18, padding:18, marginBottom:16 }}>
           <div style={{ display:'flex', gap:6, marginBottom:14 }}>
-            {[['movie','🎬 Movie'],['tv','📺 TV Show'],['book','📚 Book']].map(([t,l])=>(
+            {[['movie','🎬 Movie'],['tv','📺 TV Show'],['book','📚 Book'],['music','🎵 Music']].map(([t,l])=>(
               <button key={t} onClick={()=>{setSearchType(t);setQuery('');setResults([]);setMsg('')}}
                 style={{ flex:1, padding:'8px', borderRadius:9, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor:'pointer', transition:'all 0.15s', border:searchType===t?'1px solid rgba(245,200,66,0.40)':'1px solid rgba(255,255,255,0.09)', background:searchType===t?'rgba(245,200,66,0.14)':'rgba(255,255,255,0.04)', color:searchType===t?'#f5c842':'rgba(255,255,255,0.45)' }}>{l}</button>
             ))}
@@ -408,20 +441,44 @@ export default function Media() {
         </div>
       )}
 
-      {/* Stats */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(6,minmax(0,1fr))', gap:10, marginBottom:16 }}>
-        {[{label:'Movies',value:stats.movies,color:'#6a96f0'},{label:'TV Shows',value:stats.tv,color:'#a88ef0'},{label:'Books',value:stats.books,color:'#5dd4a6'},{label:'Watching',value:stats.active,color:'#f07a62'},{label:'Want to',value:stats.want,color:'#f5c842'},{label:'Avg ★',value:stats.avg,color:'#f5c842'}].map(s=>(
-          <div key={s.label} style={{ background:'rgba(255,255,255,0.042)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:12, padding:'12px 10px', textAlign:'center' }}>
-            <div style={{ fontFamily:FM, fontSize:20, fontWeight:500, color:s.color, marginBottom:4 }}>{s.value}</div>
-            <div style={{ fontSize:10, color:'rgba(255,255,255,0.30)', fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase' }}>{s.label}</div>
-          </div>
-        ))}
+      {/* Per-category stat panels */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,minmax(0,1fr))', gap:10, marginBottom:16 }}>
+        {catConfig.map(cat => {
+          const s = catStats(cat.type)
+          const statuses = cat.statuses
+          return (
+            <div key={cat.type}
+              onClick={() => setFilterType(filterType === cat.type ? 'all' : cat.type)}
+              style={{ background: filterType===cat.type ? cat.color+'14' : 'rgba(255,255,255,0.042)', border:'1px solid '+(filterType===cat.type?cat.color+'40':'rgba(255,255,255,0.08)'), borderRadius:14, padding:'14px 14px', cursor:'pointer', transition:'all 0.18s', backdropFilter:'blur(14px)' }}
+              onMouseEnter={e=>{ if(filterType!==cat.type){ e.currentTarget.style.borderColor=cat.color+'30'; e.currentTarget.style.background=cat.color+'09' }}}
+              onMouseLeave={e=>{ if(filterType!==cat.type){ e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; e.currentTarget.style.background='rgba(255,255,255,0.042)' }}}
+            >
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                <span style={{ fontSize:20 }}>{cat.icon}</span>
+                <span style={{ fontSize:13, fontWeight:700, color:cat.color }}>{cat.label}</span>
+                <span style={{ marginLeft:'auto', fontFamily:FM, fontSize:18, fontWeight:600, color:'#fff' }}>{s.total}</span>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                {statuses.map(st => (
+                  <div key={st.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <span style={{ fontSize:11, color:'rgba(255,255,255,0.38)' }}>{st.label}</span>
+                    <span style={{ fontSize:12, fontWeight:700, color:st.color, fontFamily:FM }}>{s[st.id] || 0}</span>
+                  </div>
+                ))}
+                <div style={{ marginTop:4, paddingTop:4, borderTop:'1px solid rgba(255,255,255,0.07)', display:'flex', justifyContent:'space-between' }}>
+                  <span style={{ fontSize:11, color:'rgba(255,255,255,0.25)' }}>Avg rating</span>
+                  <span style={{ fontSize:12, fontWeight:700, color:'#f5c842', fontFamily:FM }}>{s.avg !== '—' ? '★ '+s.avg : '—'}</span>
+                </div>
+              </div>
+            </div>
+          )
+        })}
       </div>
 
       {/* Filters */}
       <div style={{ display:'flex', gap:8, marginBottom:18, flexWrap:'wrap', alignItems:'center' }}>
         <div style={{ display:'flex', background:'rgba(255,255,255,0.05)', borderRadius:10, padding:3, gap:2 }}>
-          {[['all','All'],['movie','🎬'],['tv','📺'],['book','📚']].map(([t,l])=>(
+          {[['all','All'],['movie','🎬'],['tv','📺'],['book','📚'],['music','🎵']].map(([t,l])=>(
             <button key={t} onClick={()=>setFilterType(t)} style={{ padding:'6px 12px', borderRadius:8, border:'none', background:filterType===t?'#f5c842':'transparent', color:filterType===t?'#1a1400':'rgba(255,255,255,0.45)', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s' }}>{l}</button>
           ))}
         </div>
@@ -442,7 +499,7 @@ export default function Media() {
         <div style={{ display:'flex', justifyContent:'center', padding:60 }}><Spinner size={30} /></div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign:'center', padding:'60px 20px' }}>
-          <div style={{ fontSize:46, marginBottom:12, opacity:0.35 }}>{filterType==='book'?'📚':filterType==='tv'?'📺':filterType==='movie'?'🎬':'◈'}</div>
+          <div style={{ fontSize:46, marginBottom:12, opacity:0.35 }}>{filterType==='book'?'📚':filterType==='tv'?'📺':filterType==='movie'?'🎬':filterType==='music'?'🎵':'◈'}</div>
           <div style={{ fontSize:15, fontWeight:600, color:'rgba(255,255,255,0.40)', marginBottom:8 }}>{logs.length===0?'Your media list is empty':'Nothing matches this filter'}</div>
           <div style={{ fontSize:13, color:'rgba(255,255,255,0.25)', marginBottom:20 }}>{logs.length===0?'Click + Add to search for a movie, show or book':'Try a different filter'}</div>
           {logs.length===0 && <button onClick={()=>setShowSearch(true)} style={{ background:'#f5c842', border:'none', borderRadius:10, color:'#1a1400', fontSize:13, fontWeight:700, padding:'10px 22px', cursor:'pointer', fontFamily:'inherit' }}>+ Add your first entry</button>}
