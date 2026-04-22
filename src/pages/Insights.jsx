@@ -3,6 +3,7 @@ import { format, subDays, parseISO } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/AuthContext'
 import { Card, CardTitle, SectionHeader, Grid, Spinner, StatCard } from '@/components/shared/UI'
+import { MoodGraph } from '@/components/shared/MoodGraph'
 
 const F  = "'Plus Jakarta Sans',system-ui,sans-serif"
 const FM = "'JetBrains Mono',monospace"
@@ -65,6 +66,7 @@ export default function Insights() {
       supabase.from('wellness_checkins').select('*').gte('date', days30),
       supabase.from('workout_sessions').select('*').gte('date', days30),
       supabase.from('journal_entries').select('id,mood,date').gte('date', days30),
+      <MoodGraph journalEntries={entries} workoutSessions={sessions} transactions={transactions} />
     ])
 
     const txData      = tx.data || []
