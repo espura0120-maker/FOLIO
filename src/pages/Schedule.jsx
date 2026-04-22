@@ -9,10 +9,10 @@ import { SectionHeader, Spinner } from '@/components/shared/UI'
 
 const EVENT_COLORS = {
   finance:  { bg:'rgba(245,200,66,0.18)',  text:'#f5c842', dot:'#f5c842',  border:'rgba(245,200,66,0.40)'  },
-  workout:  { bg:'rgba(61,184,138,0.18)',  text:'#5dd4a6', dot:'#3db88a',  border:'rgba(61,184,138,0.40)'  },
+  workout:  { bg:'rgba(138,110,216,0.18)', text:'#a88ef0', dot:'#8a6ed8',  border:'rgba(138,110,216,0.40)' },
   reminder: { bg:'rgba(232,98,74,0.18)',   text:'#f07a62', dot:'#e8624a',  border:'rgba(232,98,74,0.40)'   },
   health:   { bg:'rgba(74,123,224,0.18)',  text:'#6a96f0', dot:'#4a7be0',  border:'rgba(74,123,224,0.40)'  },
-  personal: { bg:'rgba(138,110,216,0.18)', text:'#a88ef0', dot:'#8a6ed8',  border:'rgba(138,110,216,0.40)' },
+  personal: { bg:'rgba(245,200,66,0.18)',  text:'#f5c842', dot:'#f5c842',  border:'rgba(245,200,66,0.40)'  },
   work:     { bg:'rgba(29,158,117,0.18)',  text:'#5dcaa5', dot:'#1d9e75',  border:'rgba(29,158,117,0.40)'  },
 }
 
@@ -36,32 +36,26 @@ function timeLabel(e) {
   return ''
 }
 
-// ── Recurrence expansion ──────────────────────────────────────────────────
-// Given a stored event, generate all virtual occurrences within [rangeStart, rangeEnd]
 function expandRecurring(event, rangeStart, rangeEnd) {
   if (!event.recurrence || event.recurrence === 'none') return [event]
-
   const results   = []
   const recurEnd  = event.recurrence_end ? parseISO(event.recurrence_end) : addYears(rangeEnd, 1)
   const eventDate = parseISO(event.date)
   let current     = new Date(eventDate)
-
   const stepMap = {
-    daily:     d => addDays(d, 1),
-    weekly:    d => addDays(d, 7),
-    biweekly:  d => addDays(d, 14),
-    monthly:   d => addMonths(d, 1),
-    yearly:    d => addYears(d, 1),
+    daily:    d => addDays(d, 1),
+    weekly:   d => addDays(d, 7),
+    biweekly: d => addDays(d, 14),
+    monthly:  d => addMonths(d, 1),
+    yearly:   d => addYears(d, 1),
   }
   const step = stepMap[event.recurrence]
   if (!step) return [event]
-
   let safety = 0
   while (current <= rangeEnd && current <= recurEnd && safety < 500) {
     safety++
     if (current >= rangeStart) {
       const dateKey = format(current, 'yyyy-MM-dd')
-      // Compute end_date offset for multi-day events
       let virtualEndDate = dateKey
       if (event.end_date && event.end_date !== event.date) {
         const offset = differenceInDays(parseISO(event.end_date), parseISO(event.date))
@@ -74,7 +68,6 @@ function expandRecurring(event, rangeStart, rangeEnd) {
   return results
 }
 
-// Expand all events for a given range
 function expandAll(events, rangeStart, rangeEnd) {
   return events.flatMap(e => expandRecurring(e, rangeStart, rangeEnd))
 }
@@ -84,7 +77,6 @@ function eventSpansDay(event, dateKey) {
   return event.date <= dateKey && end >= dateKey
 }
 
-// ── Hook ───────────────────────────────────────────────────────────────────
 function useScheduleEvents() {
   const { user } = useAuth()
   const [events, setEvents]   = useState([])
@@ -117,27 +109,19 @@ function useScheduleEvents() {
   return { events, loading, addEvent, updateEvent, deleteEvent }
 }
 
-// ── MONTH VIEW ─────────────────────────────────────────────────────────────
 function MonthView({ current, events, onEdit }) {
   const monthStart = startOfMonth(current)
   const monthEnd   = endOfMonth(current)
   const gridStart  = startOfWeek(monthStart)
   const gridEnd    = endOfWeek(monthEnd)
-
-  // Expand recurring events for visible range
-  const expanded = useMemo(() => expandAll(events, gridStart, gridEnd), [events, current])
-
+  const expanded   = useMemo(() => expandAll(events, gridStart, gridEnd), [events, current])
   const days = []
   let d = gridStart
   while (d <= gridEnd) { days.push(d); d = addDays(d, 1) }
 
   function getMultiDayEvents() {
-    return expanded.filter(e => {
-      const end = e.end_date || e.date
-      return end > e.date && !e.all_day
-    })
+    return expanded.filter(e => { const end = e.end_date || e.date; return end > e.date && !e.all_day })
   }
-
   function getSingleDayEvents(dateKey) {
     return expanded.filter(e => {
       if (e.all_day) return false
@@ -146,7 +130,6 @@ function MonthView({ current, events, onEdit }) {
       return e.date === dateKey
     })
   }
-
   const multiDay = getMultiDayEvents()
 
   return (
@@ -156,7 +139,6 @@ function MonthView({ current, events, onEdit }) {
           <div key={day} style={{ padding:'10px 4px', textAlign:'center', fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.30)', letterSpacing:'0.07em', textTransform:'uppercase', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>{day}</div>
         ))}
       </div>
-
       {Array.from({ length: days.length / 7 }, (_, weekIdx) => {
         const weekDays = days.slice(weekIdx * 7, weekIdx * 7 + 7)
         return (
@@ -172,7 +154,6 @@ function MonthView({ current, events, onEdit }) {
                 const end = e.end_date || e.date
                 return e.date <= dateKey && end >= dateKey
               })
-
               return (
                 <div key={di} style={{ background:otherMonth?'#0e0f16':'#1c1e2b', minHeight:90, padding:'6px 4px 4px', borderRight:di<6?'1px solid rgba(255,255,255,0.06)':'none', borderBottom:'1px solid rgba(255,255,255,0.06)', overflow:'hidden' }}>
                   <div style={{ marginBottom:4, display:'flex', justifyContent:'center', alignItems:'center', gap:4 }}>
@@ -181,38 +162,31 @@ function MonthView({ current, events, onEdit }) {
                       : <span style={{ fontSize:12, fontWeight:500, color:otherMonth?'rgba(255,255,255,0.18)':'rgba(255,255,255,0.55)' }}>{format(day,'d')}</span>
                     }
                   </div>
-
                   {allDayEvts.map(e => {
                     const c = EVENT_COLORS[e.category] || EVENT_COLORS.personal
                     const end = e.end_date || e.date
-                    const isStart = e.date === dateKey
-                    const isEnd   = end === dateKey
-                    const isMulti = end !== e.date
+                    const isStart = e.date === dateKey, isEnd = end === dateKey, isMulti = end !== e.date
                     return (
-                      <div key={e.id + dateKey} onClick={() => onEdit(e._virtual ? { ...e, id: e._parentId } : e)} style={{ background:c.bg, color:c.text, borderRadius:isMulti?(isStart?'4px 0 0 4px':isEnd?'0 4px 4px 0':'0'):4, padding:'2px 5px', fontSize:10, fontWeight:600, marginBottom:2, cursor:'pointer', borderLeft:isStart||!isMulti?'2px solid '+c.dot:'none', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginLeft:isStart||!isMulti?0:-4, marginRight:isEnd||!isMulti?0:-4 }}>
+                      <div key={e.id+dateKey} onClick={() => onEdit(e._virtual?{...e,id:e._parentId}:e)} style={{ background:c.bg, color:c.text, borderRadius:isMulti?(isStart?'4px 0 0 4px':isEnd?'0 4px 4px 0':'0'):4, padding:'2px 5px', fontSize:10, fontWeight:600, marginBottom:2, cursor:'pointer', borderLeft:isStart||!isMulti?'2px solid '+c.dot:'none', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginLeft:isStart||!isMulti?0:-4, marginRight:isEnd||!isMulti?0:-4 }}>
                         {isStart||!isMulti ? e.title : ''}
                       </div>
                     )
                   })}
-
                   {spanEvts.map(e => {
                     const c = EVENT_COLORS[e.category] || EVENT_COLORS.personal
                     const end = e.end_date || e.date
-                    const isStart = e.date === dateKey
-                    const isEnd   = end === dateKey
+                    const isStart = e.date === dateKey, isEnd = end === dateKey
                     return (
-                      <div key={e.id + dateKey + 'span'} onClick={() => onEdit(e._virtual ? { ...e, id: e._parentId } : e)} style={{ background:c.bg, color:c.text, borderRadius:isStart?'4px 0 0 4px':isEnd?'0 4px 4px 0':0, padding:'2px 5px', fontSize:10, fontWeight:600, marginBottom:2, cursor:'pointer', borderLeft:isStart?'2px solid '+c.dot:'none', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginLeft:isStart?0:-4, marginRight:isEnd?0:-4 }}>
+                      <div key={e.id+dateKey+'span'} onClick={() => onEdit(e._virtual?{...e,id:e._parentId}:e)} style={{ background:c.bg, color:c.text, borderRadius:isStart?'4px 0 0 4px':isEnd?'0 4px 4px 0':0, padding:'2px 5px', fontSize:10, fontWeight:600, marginBottom:2, cursor:'pointer', borderLeft:isStart?'2px solid '+c.dot:'none', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginLeft:isStart?0:-4, marginRight:isEnd?0:-4 }}>
                         {isStart ? e.title : ''}
                       </div>
                     )
                   })}
-
                   {singleEvts.map(e => {
                     const c = EVENT_COLORS[e.category] || EVENT_COLORS.personal
                     return (
-                      <div key={e.id + dateKey} onClick={() => onEdit(e._virtual ? { ...e, id: e._parentId } : e)} style={{ background:c.bg, color:c.text, borderLeft:'2px solid '+c.dot, borderRadius:'0 4px 4px 0', padding:'2px 5px', fontSize:10, fontWeight:600, marginBottom:2, cursor:'pointer', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                        {e.start_time?e.start_time.slice(0,5)+' ':''}{e.title}
-                        {e.recurrence && e.recurrence !== 'none' ? ' 🔁' : ''}
+                      <div key={e.id+dateKey} onClick={() => onEdit(e._virtual?{...e,id:e._parentId}:e)} style={{ background:c.bg, color:c.text, borderLeft:'2px solid '+c.dot, borderRadius:'0 4px 4px 0', padding:'2px 5px', fontSize:10, fontWeight:600, marginBottom:2, cursor:'pointer', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                        {e.start_time?e.start_time.slice(0,5)+' ':''}{e.title}{e.recurrence&&e.recurrence!=='none'?' 🔁':''}
                       </div>
                     )
                   })}
@@ -226,7 +200,6 @@ function MonthView({ current, events, onEdit }) {
   )
 }
 
-// ── WEEK VIEW ──────────────────────────────────────────────────────────────
 function WeekView({ current, events, onEdit }) {
   const weekStart = startOfWeek(current)
   const weekEnd   = endOfWeek(current)
@@ -236,8 +209,7 @@ function WeekView({ current, events, onEdit }) {
 
   function getEventStyle(e) {
     if (e.all_day) return null
-    const startMins = parseTime(e.start_time)
-    const endMins   = parseTime(e.end_time)
+    const startMins = parseTime(e.start_time), endMins = parseTime(e.end_time)
     if (startMins === null) return null
     const duration = endMins ? Math.max(endMins - startMins, 30) : 60
     return { top: ((startMins - START_H * 60) / 60) * DAY_H, height: (duration / 60) * DAY_H }
@@ -254,7 +226,6 @@ function WeekView({ current, events, onEdit }) {
           </div>
         ))}
       </div>
-
       {expanded.some(e => e.all_day) && (
         <div style={{ display:'grid', gridTemplateColumns:'52px repeat(7,1fr)', background:'#12131a', borderBottom:'1px solid rgba(255,255,255,0.07)', minHeight:28 }}>
           <div style={{ padding:'4px 6px', fontSize:10, color:'rgba(255,255,255,0.28)', textAlign:'right', borderRight:'1px solid rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'flex-end' }}>all day</div>
@@ -277,7 +248,6 @@ function WeekView({ current, events, onEdit }) {
           })}
         </div>
       )}
-
       <div style={{ overflowY:'auto', maxHeight:520, background:'#1c1e2b' }}>
         <div style={{ display:'grid', gridTemplateColumns:'52px repeat(7,1fr)', position:'relative' }}>
           <div>
@@ -318,9 +288,8 @@ function WeekView({ current, events, onEdit }) {
   )
 }
 
-// ── DAY VIEW ───────────────────────────────────────────────────────────────
 function DayView({ current, events, onEdit }) {
-  const dateKey = format(current, 'yyyy-MM-dd')
+  const dateKey  = format(current, 'yyyy-MM-dd')
   const dayStart = parseISO(dateKey)
   const expanded = useMemo(() => expandAll(events, addDays(dayStart,-1), addDays(dayStart,1)), [events, dateKey])
   const dayEvents = expanded.filter(e => eventSpansDay(e, dateKey))
@@ -347,7 +316,6 @@ function DayView({ current, events, onEdit }) {
           <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>events</div>
         </div>
       </div>
-
       {allDay.length > 0 && (
         <div style={{ background:'#12131a', padding:'8px 16px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
           {allDay.map(e => {
@@ -361,7 +329,6 @@ function DayView({ current, events, onEdit }) {
           })}
         </div>
       )}
-
       <div style={{ overflowY:'auto', maxHeight:520, background:'#1c1e2b' }}>
         <div style={{ display:'grid', gridTemplateColumns:'56px 1fr', position:'relative' }}>
           <div>
@@ -396,21 +363,20 @@ function DayView({ current, events, onEdit }) {
   )
 }
 
-// ── EVENT MODAL ────────────────────────────────────────────────────────────
 function EventModal({ event, onSave, onDelete, onClose }) {
   const isNew = !event.id
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
-    title:          event.title      || '',
-    category:       event.category   || 'personal',
-    date:           event.date       || format(new Date(), 'yyyy-MM-dd'),
-    end_date:       event.end_date   || event.date || format(new Date(), 'yyyy-MM-dd'),
-    start_time:     event.start_time || '09:00',
-    end_time:       event.end_time   || '10:00',
-    all_day:        event.all_day    || false,
-    multi_day:      event.multi_day  || (event.end_date && event.end_date !== event.date) || false,
-    note:           event.note       || '',
-    recurrence:     event.recurrence || 'none',
+    title:          event.title          || '',
+    category:       event.category       || 'personal',
+    date:           event.date           || format(new Date(), 'yyyy-MM-dd'),
+    end_date:       event.end_date       || event.date || format(new Date(), 'yyyy-MM-dd'),
+    start_time:     event.start_time     || '09:00',
+    end_time:       event.end_time       || '10:00',
+    all_day:        event.all_day        || false,
+    multi_day:      event.multi_day      || (event.end_date && event.end_date !== event.date) || false,
+    note:           event.note           || '',
+    recurrence:     event.recurrence     || 'none',
     recurrence_end: event.recurrence_end || '',
   })
   const set    = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
@@ -445,13 +411,11 @@ function EventModal({ event, onSave, onDelete, onClose }) {
           <div style={{ fontSize:20, fontWeight:800, color:'#fff' }}>{isNew ? 'Add Event' : 'Edit Event'}</div>
           <button onClick={onClose} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.40)', fontSize:22, cursor:'pointer', lineHeight:1 }}>x</button>
         </div>
-
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
           <div>
             <label style={{ fontSize:12, color:'rgba(255,255,255,0.40)', display:'block', marginBottom:5, fontWeight:700 }}>Event title</label>
             <input value={form.title} onChange={set('title')} placeholder="e.g. Team meeting" autoFocus />
           </div>
-
           <div>
             <label style={{ fontSize:12, color:'rgba(255,255,255,0.40)', display:'block', marginBottom:8, fontWeight:700 }}>Category</label>
             <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
@@ -460,7 +424,6 @@ function EventModal({ event, onSave, onDelete, onClose }) {
               ))}
             </div>
           </div>
-
           <div style={{ display:'flex', gap:16 }}>
             <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontSize:13, color:'rgba(255,255,255,0.65)' }}>
               <input type="checkbox" checked={form.all_day} onChange={()=>toggle('all_day')} style={{ width:16, height:16, accentColor:'#f5c842', cursor:'pointer' }} />
@@ -471,7 +434,6 @@ function EventModal({ event, onSave, onDelete, onClose }) {
               Multiple days
             </label>
           </div>
-
           <div style={{ display:'flex', gap:8 }}>
             <div style={{ flex:1 }}>
               <label style={{ fontSize:12, color:'rgba(255,255,255,0.40)', display:'block', marginBottom:5, fontWeight:700 }}>{form.multi_day?'Start date':'Date'}</label>
@@ -484,7 +446,6 @@ function EventModal({ event, onSave, onDelete, onClose }) {
               </div>
             )}
           </div>
-
           {!form.all_day && (
             <div style={{ display:'flex', gap:8 }}>
               <div style={{ flex:1 }}>
@@ -497,8 +458,6 @@ function EventModal({ event, onSave, onDelete, onClose }) {
               </div>
             </div>
           )}
-
-          {/* Recurrence */}
           <div>
             <label style={{ fontSize:12, color:'rgba(255,255,255,0.40)', display:'block', marginBottom:8, fontWeight:700 }}>Repeat</label>
             <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
@@ -509,19 +468,16 @@ function EventModal({ event, onSave, onDelete, onClose }) {
               ))}
             </div>
           </div>
-
           {form.recurrence && form.recurrence !== 'none' && (
             <div>
               <label style={{ fontSize:12, color:'rgba(255,255,255,0.40)', display:'block', marginBottom:5, fontWeight:700 }}>Repeat until (optional)</label>
               <input type="date" value={form.recurrence_end} onChange={set('recurrence_end')} min={form.date} style={{ colorScheme:'dark' }} />
             </div>
           )}
-
           <div>
             <label style={{ fontSize:12, color:'rgba(255,255,255,0.40)', display:'block', marginBottom:5, fontWeight:700 }}>Note (optional)</label>
             <input value={form.note} onChange={set('note')} placeholder="e.g. Meeting room 3" />
           </div>
-
           <button onClick={handleSave} disabled={saving} style={{ padding:'12px 16px', background:'#f5c842', border:'none', borderRadius:12, color:'#1a1400', fontSize:14, fontWeight:700, cursor:saving?'not-allowed':'pointer', fontFamily:'inherit', width:'100%', opacity:saving?0.7:1 }}>
             {saving ? 'Saving...' : isNew ? 'Save Event' : 'Save Changes'}
           </button>
@@ -534,7 +490,6 @@ function EventModal({ event, onSave, onDelete, onClose }) {
   )
 }
 
-// ── MAIN ───────────────────────────────────────────────────────────────────
 export default function Schedule() {
   const [view, setView]             = useState('month')
   const [current, setCurrent]       = useState(new Date())
