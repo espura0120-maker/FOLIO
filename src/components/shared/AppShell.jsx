@@ -16,6 +16,9 @@ const NAV = [
   { to: '/media',     label: 'Media',     accent: '#5dd4a6' },
   { to: '/cycle',     label: 'Cycle',     accent: '#ed93b1', pink: true },
   { to: '/settings',  label: 'Settings',  accent: '#888780' },
+  { path:'/daily-log',     label:'Daily Log',     icon:'✦' },
+  { path:'/habits',        label:'Habits',        icon:'🎯' },
+  { path:'/weekly-review', label:'Weekly Review', icon:'📋' },
 ]
 
 function I({ d, fill }) {
