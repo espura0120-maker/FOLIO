@@ -15,6 +15,9 @@ import Journal    from '@/pages/Journal'
 import Media     from '@/pages/Media'
 import Cycle      from '@/pages/Cycle'
 import Settings   from '@/pages/Settings'
+import DailyLog      from '@/pages/DailyLog'
+import HabitTracker  from '@/pages/HabitTracker'
+import WeeklyReview  from '@/pages/WeeklyReview'
 
 export default function App() {
   return (
@@ -42,6 +45,9 @@ export default function App() {
               <Route path="media"     element={<Media />} />
               <Route path="cycle"      element={<Cycle />} />
               <Route path="settings"   element={<Settings />} />
+              <Route path="/daily-log"     element={<DailyLog />} />
+              <Route path="/habits"        element={<HabitTracker />} />
+              <Route path="/weekly-review" element={<WeeklyReview />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
