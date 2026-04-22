@@ -8,10 +8,11 @@ const FM = "'JetBrains Mono',monospace"
 const F  = "'Plus Jakarta Sans',sans-serif"
 
 const BULLET_TYPES = [
-  { symbol: '•', type: 'task',     label: 'Task',     color: '#f5c842', desc: 'Something to do' },
-  { symbol: '–', type: 'note',     label: 'Note',     color: '#6a96f0', desc: 'Information or thought' },
-  { symbol: '○', type: 'event',    label: 'Event',    color: '#5dd4a6', desc: 'Something that happened' },
-  { symbol: '★', type: 'priority', label: 'Priority', color: '#f07a62', desc: 'Important task' },
+  { symbol: '💼', type: 'work',     label: 'Work',     color: '#6a96f0', desc: 'Work task' },
+  { symbol: '🏠', type: 'personal', label: 'Personal', color: '#f5c842', desc: 'Personal task' },
+  { symbol: '–',  type: 'note',     label: 'Note',     color: '#a88ef0', desc: 'Information or thought' },
+  { symbol: '○',  type: 'event',    label: 'Event',    color: '#5dd4a6', desc: 'Something that happened' },
+  { symbol: '★',  type: 'priority', label: 'Priority', color: '#f07a62', desc: 'Important priority' },
 ]
 
 function getBullet(type) {
@@ -80,7 +81,7 @@ export default function DailyLog() {
   const { entries, loading, addEntry, toggleComplete, migrateEntry, deleteEntry } = useDailyLog(dateKey)
 
   const [text, setText] = useState('')
-  const [bulletType, setBulletType] = useState('task')
+  const [bulletType, setBulletType] = useState('work')
   const [saving, setSaving] = useState(false)
   const [hoveredId, setHoveredId] = useState(null)
 
@@ -102,13 +103,14 @@ export default function DailyLog() {
       handleAdd(e)
     }
     // Quick bullet type switching
-    if (e.key === '1') setBulletType('task')
-    if (e.key === '2') setBulletType('note')
-    if (e.key === '3') setBulletType('event')
-    if (e.key === '4') setBulletType('priority')
+    if (e.key === '1') setBulletType('work')
+    if (e.key === '2') setBulletType('personal')
+    if (e.key === '3') setBulletType('note')
+    if (e.key === '4') setBulletType('event')
+    if (e.key === '5') setBulletType('priority')
   }
 
-  const tasks     = entries.filter(e => e.type === 'task' || e.type === 'priority')
+  const tasks     = entries.filter(e => e.type === 'work' || e.type === 'personal' || e.type === 'priority')
   const completed = tasks.filter(e => e.completed).length
   const total     = tasks.length
 
@@ -162,7 +164,7 @@ export default function DailyLog() {
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={`Add ${bullet.label.toLowerCase()}... (Enter to save, 1-4 to switch type)`}
+            placeholder={`Add ${bullet.label.toLowerCase()} task... (Enter to save, 1-5 to switch type)`}
             autoFocus
             style={{ flex:1, background:'#0e0f16', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, color:'#fff', fontSize:14, padding:'10px 13px', outline:'none', fontFamily:F, boxSizing:'border-box' }}
             onFocus={e => e.target.style.borderColor = bullet.color+'80'}
@@ -184,10 +186,24 @@ export default function DailyLog() {
           <div style={{ fontSize:13, color:'rgba(255,255,255,0.22)' }}>Start logging your day above</div>
         </div>
       ) : (
-        <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-          {entries.map(entry => {
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+          {/* Group: Work tasks */}
+          {['work','personal','priority','note','event'].map(group => {
+            const groupEntries = entries.filter(e => e.type === group)
+            if (groupEntries.length === 0) return null
+            const groupBullet = getBullet(group)
+            const groupLabel = group === 'work' ? '💼 Work' : group === 'personal' ? '🏠 Personal' : group === 'priority' ? '★ Priorities' : group === 'note' ? '– Notes' : '○ Events'
+            return (
+              <div key={group}>
+                <div style={{ fontSize:11, fontWeight:700, color:groupBullet.color, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}>
+                  <div style={{ height:1, flex:1, background:groupBullet.color+'25' }} />
+                  {groupLabel}
+                  <div style={{ height:1, flex:1, background:groupBullet.color+'25' }} />
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                {groupEntries.map(entry => {
             const b = getBullet(entry.type)
-            const isTask = entry.type === 'task' || entry.type === 'priority'
+            const isTask = entry.type === 'work' || entry.type === 'personal' || entry.type === 'priority'
             const isHovered = hoveredId === entry.id
             return (
               <div key={entry.id}
@@ -216,12 +232,16 @@ export default function DailyLog() {
                 {/* Actions */}
                 {isHovered && (
                   <div style={{ display:'flex', gap:5, flexShrink:0 }}>
-                    {isTask && !entry.completed && !entry.migrated && (
+                    {isTask && !entry.completed && !entry.migrated && entry.type !== 'note' && entry.type !== 'event' && (
                       <button onClick={() => migrateEntry(entry.id)} title="Migrate to tomorrow" style={{ background:'rgba(245,200,66,0.12)', border:'1px solid rgba(245,200,66,0.25)', borderRadius:7, color:'#f5c842', fontSize:11, padding:'3px 8px', cursor:'pointer', fontFamily:F, fontWeight:700 }}>→ tmrw</button>
                     )}
                     <button onClick={() => deleteEntry(entry.id)} style={{ background:'rgba(240,122,98,0.10)', border:'1px solid rgba(240,122,98,0.22)', borderRadius:7, color:'#f07a62', fontSize:11, padding:'3px 7px', cursor:'pointer' }}>✕</button>
                   </div>
                 )}
+              </div>
+            )
+          })}
+                </div>
               </div>
             )
           })}
