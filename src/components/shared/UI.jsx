@@ -1,270 +1,306 @@
 import { useEffect, useRef, useState } from 'react'
 
-const F  = "'Plus Jakarta Sans',system-ui,sans-serif"
 const FS = "'DM Serif Display',Georgia,serif"
+const F  = "'Plus Jakarta Sans',system-ui,sans-serif"
 const FM = "'JetBrains Mono',monospace"
 
-// ── Animated Number ────────────────────────────────────────────────────────
-export function AnimatedNumber({ value, duration=900, prefix='', suffix='', decimals=0, color, style }) {
-  const [display, setDisplay]  = useState(0)
-  const startRef   = useRef(null)
-  const prevRef    = useRef(0)
-  const rafRef     = useRef(null)
+// ── Animated counter hook ─────────────────────────────────────────────────
+function useCountUp(target, duration = 900) {
+  const [val, setVal] = useState(0)
+  const prev = useRef(0)
   useEffect(() => {
-    const from = prevRef.current
-    const to   = parseFloat(value) || 0
-    prevRef.current = to
-    if (from === to) { setDisplay(to); return }
-    cancelAnimationFrame(rafRef.current)
-    startRef.current = null
-    const ease = t => 1 - Math.pow(1 - t, 3)
-    const tick = ts => {
-      if (!startRef.current) startRef.current = ts
-      const p = Math.min((ts - startRef.current) / duration, 1)
-      setDisplay(from + (to - from) * ease(p))
-      if (p < 1) rafRef.current = requestAnimationFrame(tick)
+    const start = prev.current
+    const end   = parseFloat(String(target).replace(/[^0-9.-]/g,'')) || 0
+    const diff  = end - start
+    if (diff === 0) return
+    const startTime = performance.now()
+    const tick = (now) => {
+      const elapsed = now - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      const ease = 1 - Math.pow(1 - progress, 3)
+      setVal(start + diff * ease)
+      if (progress < 1) requestAnimationFrame(tick)
+      else { setVal(end); prev.current = end }
     }
-    rafRef.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [value, duration])
-  const fmt = decimals > 0 ? display.toFixed(decimals) : Math.round(display).toLocaleString()
-  return <span style={{ color, fontFamily: FM, ...style }}>{prefix}{fmt}{suffix}</span>
+    requestAnimationFrame(tick)
+  }, [target])
+  return val
 }
 
-// ── Skeleton ────────────────────────────────────────────────────────────────
-export function Skeleton({ width='100%', height=18, radius=8, style }) {
+// ── Shimmer skeleton ──────────────────────────────────────────────────────
+export function Shimmer({ width = '100%', height = 18, radius = 8, style }) {
   return (
-    <div style={{ width, height, borderRadius: radius, background: 'rgba(255,255,255,0.07)', overflow: 'hidden', position: 'relative', ...style }}>
-      <div style={{ position:'absolute', inset:0, background:'linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.06) 50%,transparent 100%)', animation:'shimmer 1.6s ease-in-out infinite' }} />
-    </div>
+    <div style={{
+      width, height, borderRadius: radius,
+      background: 'linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 75%)',
+      backgroundSize: '200% 100%',
+      animation: 'shimmerSlide 1.4s ease-in-out infinite',
+      ...style
+    }} />
   )
 }
 
-export function SkeletonCard({ rows=3 }) {
+export function SkeletonCard({ rows = 3 }) {
   return (
-    <div style={{ background:'rgba(255,255,255,0.045)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:18, padding:'16px 18px' }}>
-      <Skeleton height={12} width="40%" radius={6} style={{ marginBottom:16 }} />
-      {Array.from({length:rows}).map((_,i) => (
-        <Skeleton key={i} height={14} width={i===rows-1?'60%':'100%'} radius={6} style={{ marginBottom: i < rows-1 ? 10 : 0 }} />
+    <Card>
+      <Shimmer width="40%" height={10} style={{ marginBottom: 16 }} />
+      {Array.from({ length: rows }).map((_, i) => (
+        <Shimmer key={i} width={i === rows-1 ? '60%' : '100%'} height={14} style={{ marginBottom: 10 }} />
       ))}
-    </div>
+    </Card>
   )
 }
 
-// ── Page wrapper with per-page accent glow ─────────────────────────────────
-export function PageWrapper({ children, accent='#f5c842', style }) {
+// ── Card ──────────────────────────────────────────────────────────────────
+export function Card({ children, style, onClick, accent, glow }) {
+  const [hovered, setHovered] = useState(false)
+  const glowColor = accent || '#f5c842'
+
   return (
-    <div style={{ position:'relative', ...style }}>
-      {/* Top-right accent glow */}
+    <div
+      onClick={onClick}
+      onMouseEnter={() => onClick && setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: 'rgba(255,255,255,0.042)',
+        border: `1px solid ${hovered ? glowColor+'30' : 'rgba(255,255,255,0.08)'}`,
+        borderRadius: 18,
+        padding: '16px 18px',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        boxShadow: hovered && onClick
+          ? `0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px ${glowColor}18, inset 0 1px 0 rgba(255,255,255,0.08)`
+          : glow
+          ? `0 0 32px ${glowColor}18, inset 0 1px 0 rgba(255,255,255,0.07)`
+          : 'inset 0 1px 0 rgba(255,255,255,0.06)',
+        position: 'relative',
+        overflow: 'hidden',
+        cursor: onClick ? 'pointer' : undefined,
+        transition: 'border-color 0.25s, box-shadow 0.25s, transform 0.2s',
+        transform: hovered && onClick ? 'translateY(-1px)' : 'none',
+        ...style,
+      }}>
+      {/* Top shimmer line */}
       <div style={{
-        position:'fixed', top:-120, right:-120,
-        width:420, height:420,
-        background: `radial-gradient(circle, ${accent}18 0%, ${accent}08 40%, transparent 70%)`,
-        borderRadius:'50%', pointerEvents:'none', zIndex:0,
-        animation:'gp 8s ease-in-out infinite',
+        position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+        background: `linear-gradient(90deg, transparent 0%, ${glowColor}25 50%, transparent 100%)`,
+        pointerEvents: 'none',
       }} />
-      <div style={{ position:'relative', zIndex:1 }}>{children}</div>
-    </div>
-  )
-}
-
-// ── Card ────────────────────────────────────────────────────────────────────
-export function Card({ children, style, onClick, accent }) {
-  const glow = accent ? accent + '20' : 'rgba(245,200,66,0.10)'
-  return (
-    <div onClick={onClick} style={{
-      background:'rgba(255,255,255,0.052)',
-      border:'1px solid rgba(255,255,255,0.085)',
-      borderRadius:18, padding:'16px 18px',
-      backdropFilter:'blur(18px)', WebkitBackdropFilter:'blur(18px)',
-      boxShadow:'inset 0 1px 0 rgba(255,255,255,0.065)',
-      cursor:onClick?'pointer':undefined,
-      transition:'border-color 0.2s, box-shadow 0.22s, transform 0.15s',
-      position:'relative', overflow:'hidden',
-      fontFamily:F, ...style,
-    }}
-    onMouseEnter={e=>{
-      e.currentTarget.style.borderColor='rgba(255,255,255,0.14)'
-      e.currentTarget.style.boxShadow=`0 0 24px ${glow}, inset 0 1px 0 rgba(255,255,255,0.09)`
-      if (onClick) e.currentTarget.style.transform='translateY(-2px)'
-    }}
-    onMouseLeave={e=>{
-      e.currentTarget.style.borderColor='rgba(255,255,255,0.085)'
-      e.currentTarget.style.boxShadow='inset 0 1px 0 rgba(255,255,255,0.065)'
-      e.currentTarget.style.transform='none'
-    }}>
-      {/* Shimmer sweep on hover */}
-      <div className="card-shimmer" style={{ position:'absolute', top:0, left:'-100%', width:'60%', height:'100%', background:'linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent)', pointerEvents:'none', transition:'left 0.5s ease' }} />
+      {/* Noise texture */}
+      <div style={{
+        position: 'absolute', inset: 0, opacity: 0.025, pointerEvents: 'none',
+        backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")",
+        borderRadius: 18,
+      }} />
       {children}
     </div>
   )
 }
 
-// ── StatCard ────────────────────────────────────────────────────────────────
-export function StatCard({ label, value, sub, color='#f5c842', accent, animate=true }) {
-  const raw = String(value).replace(/[^0-9.-]/g,'')
-  const num = parseFloat(raw)
-  const isNum = animate && !isNaN(num)
-  const prefix = String(value).match(/^[€$¥£]*/)?.[0] || ''
-  const suffix = String(value).match(/[^0-9.]+$/)?.[0] || ''
+// ── StatCard ──────────────────────────────────────────────────────────────
+export function StatCard({ label, value, sub, color = '#f5c842', accent }) {
+  const isNumeric = !isNaN(parseFloat(String(value).replace(/[^0-9.-]/g,'')))
+  const raw = parseFloat(String(value).replace(/[^0-9.-]/g,'')) || 0
+  const animated = useCountUp(isNumeric ? raw : 0)
+  const prefix = String(value).match(/^[^0-9-]*/)?.[0] || ''
+  const suffix = String(value).match(/[^0-9.]*$/)?.[0] || ''
+  const displayVal = isNumeric
+    ? prefix + (Number.isInteger(raw) ? Math.round(animated) : animated.toFixed(1)) + suffix
+    : value
+
   return (
-    <div style={{ background:'rgba(255,255,255,0.042)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, padding:'14px 16px', backdropFilter:'blur(14px)', WebkitBackdropFilter:'blur(14px)', fontFamily:F, transition:'box-shadow 0.2s' }}
-      onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 0 18px ${color}18`}
-      onMouseLeave={e=>e.currentTarget.style.boxShadow='none'}>
-      <div style={{ fontSize:11, color:'rgba(255,255,255,0.32)', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:7 }}>{label}</div>
-      <div style={{ fontSize:22, fontWeight:500, color }}>
-        {isNum
-          ? <AnimatedNumber value={num} prefix={prefix} suffix={suffix} decimals={String(value).includes('.')?2:0} color={color} />
-          : <span style={{ fontFamily:FM, color }}>{value}</span>
-        }
-      </div>
-      {sub && <div style={{ fontSize:12, color:'rgba(255,255,255,0.32)', marginTop:3 }}>{sub}</div>}
+    <div style={{
+      background: 'rgba(255,255,255,0.042)',
+      border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: 16,
+      padding: '16px 18px',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 0 20px ${color}08`,
+      position: 'relative', overflow: 'hidden',
+      transition: 'box-shadow 0.3s',
+    }}
+    onMouseEnter={e => e.currentTarget.style.boxShadow = `inset 0 1px 0 rgba(255,255,255,0.06), 0 0 28px ${color}20`}
+    onMouseLeave={e => e.currentTarget.style.boxShadow = `inset 0 1px 0 rgba(255,255,255,0.06), 0 0 20px ${color}08`}
+    >
+      {/* Subtle corner glow */}
+      <div style={{ position:'absolute', top:-20, right:-20, width:60, height:60, borderRadius:'50%', background:`radial-gradient(circle, ${color}18, transparent 70%)`, pointerEvents:'none' }} />
+      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.32)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>{label}</div>
+      <div style={{
+        fontFamily: FM, fontSize: 24, fontWeight: 500, color,
+        textShadow: `0 0 20px ${color}50`,
+        fontVariantNumeric: 'tabular-nums',
+        letterSpacing: '-0.02em',
+      }}>{displayVal}</div>
+      {sub && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.30)', marginTop: 4 }}>{sub}</div>}
       {accent !== undefined && (
-        <div style={{ background:'rgba(255,255,255,0.07)', borderRadius:99, height:5, overflow:'hidden', marginTop:10 }}>
-          <div style={{ width:Math.min(accent,100)+'%', height:'100%', background:color, borderRadius:99, transition:'width 0.9s cubic-bezier(0.34,1.2,0.64,1)' }} />
+        <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 99, height: 3, overflow: 'hidden', marginTop: 10 }}>
+          <div style={{ width: Math.min(accent, 100) + '%', height: '100%', background: `linear-gradient(90deg, ${color}88, ${color})`, borderRadius: 99, transition: 'width 1s cubic-bezier(0.34,1.56,0.64,1)', boxShadow: `0 0 8px ${color}80` }} />
         </div>
       )}
     </div>
   )
 }
 
-// ── Button ──────────────────────────────────────────────────────────────────
-export function Button({ children, variant='default', size='md', fullWidth, loading, disabled, onClick, type='button', style }) {
-  const pad = size==='sm'?'7px 14px':size==='lg'?'13px 24px':'10px 18px'
-  const fs  = size==='sm'?12:size==='lg'?15:14
-  const v = {
-    default:{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.11)', color:'rgba(255,255,255,0.72)' },
-    gold:   { background:'#f5c842', border:'1px solid #f5c842', color:'#1a1400' },
-    teal:   { background:'#3db88a', border:'1px solid #3db88a', color:'#041a12' },
-    ghost:  { background:'transparent', border:'1px solid rgba(255,255,255,0.10)', color:'rgba(255,255,255,0.48)' },
-    danger: { background:'rgba(232,98,74,0.11)', border:'1px solid rgba(232,98,74,0.24)', color:'#f07a62' },
-  }[variant]||{}
+// ── SectionHeader ─────────────────────────────────────────────────────────
+export function SectionHeader({ title, sub, action, accent }) {
   return (
-    <button type={type} onClick={onClick} disabled={disabled||loading} style={{
-      display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7,
-      fontFamily:F, fontWeight:700, borderRadius:10, padding:pad, fontSize:fs,
-      width:fullWidth?'100%':undefined,
-      opacity:disabled||loading?0.45:1,
-      cursor:disabled||loading?'not-allowed':'pointer',
-      transition:'transform 0.12s, opacity 0.15s, box-shadow 0.15s',
-      ...v, ...style,
-    }}
-    onMouseEnter={e=>{ if(!disabled&&!loading){ e.currentTarget.style.transform='scale(1.025)'; if(variant==='gold') e.currentTarget.style.boxShadow='0 0 16px rgba(245,200,66,0.35)' }}}
-    onMouseLeave={e=>{ e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.boxShadow='none' }}
-    onMouseDown={e=>{ if(!disabled&&!loading) e.currentTarget.style.transform='scale(0.97)' }}
-    onMouseUp={e=>{ if(!disabled&&!loading) e.currentTarget.style.transform='scale(1.025)' }}
-    >
-      {loading ? <span style={{ width:13, height:13, border:'2px solid currentColor', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.6s linear infinite', display:'inline-block' }} /> : children}
-    </button>
-  )
-}
-
-// ── SectionHeader with serif title + accent bar ─────────────────────────────
-export function SectionHeader({ title, sub, action, accent='#f5c842' }) {
-  return (
-    <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', marginBottom:22 }}>
+    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24 }}>
       <div>
-        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom: sub ? 4 : 0 }}>
-          <div style={{ width:4, height:28, background:`linear-gradient(180deg, ${accent}, ${accent}44)`, borderRadius:99, flexShrink:0, boxShadow:`0 0 10px ${accent}60` }} />
-          <h1 style={{ fontFamily:FS, fontSize:28, fontWeight:400, color:'#fff', letterSpacing:'-0.01em', lineHeight:1 }}>{title}</h1>
-        </div>
-        {sub && <p style={{ fontSize:13, color:'rgba(255,255,255,0.35)', marginLeft:14, fontFamily:F }}>{sub}</p>}
+        <h1 style={{
+          fontFamily: FS, fontSize: 28, fontWeight: 400,
+          background: `linear-gradient(135deg, #fff 0%, ${accent || '#f5c842'} 100%)`,
+          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          marginBottom: 3, lineHeight: 1.2,
+          letterSpacing: '-0.02em',
+        }}>{title}</h1>
+        {sub && <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.38)', letterSpacing: '0.01em' }}>{sub}</p>}
       </div>
       {action}
     </div>
   )
 }
 
-// ── CardTitle ───────────────────────────────────────────────────────────────
+// ── CardTitle ─────────────────────────────────────────────────────────────
 export function CardTitle({ children }) {
-  return <div style={{ fontFamily:F, fontSize:11, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', color:'rgba(255,255,255,0.32)', marginBottom:12 }}>{children}</div>
+  return (
+    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.28)', marginBottom: 14 }}>
+      {children}
+    </div>
+  )
 }
 
-// ── ListItem ─────────────────────────────────────────────────────────────────
-export function ListItem({ icon, iconBg, name, sub, right, onDelete }) {
+// ── Button ────────────────────────────────────────────────────────────────
+export function Button({ children, variant = 'default', size = 'md', fullWidth, loading, disabled, onClick, type = 'button', style }) {
+  const pad = size === 'sm' ? '7px 14px' : size === 'lg' ? '14px 26px' : '10px 20px'
+  const fs  = size === 'sm' ? 12 : size === 'lg' ? 15 : 13
+
+  const variants = {
+    default: { background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.11)', color:'rgba(255,255,255,0.70)', boxShadow:'inset 0 1px 0 rgba(255,255,255,0.07)' },
+    gold:    { background:'linear-gradient(135deg,#b8852a,#f5c842,#c9993a)', border:'1px solid rgba(245,200,66,0.35)', color:'#1a1000', boxShadow:'0 0 22px rgba(245,200,66,0.35), inset 0 1px 0 rgba(255,255,255,0.22)' },
+    teal:    { background:'linear-gradient(135deg,#3db88a,#5dd4a6)', border:'1px solid rgba(93,212,166,0.35)', color:'#041a12', boxShadow:'0 0 18px rgba(61,184,138,0.28), inset 0 1px 0 rgba(255,255,255,0.20)' },
+    ghost:   { background:'transparent', border:'1px solid transparent', color:'rgba(255,255,255,0.40)', boxShadow:'none' },
+    danger:  { background:'rgba(240,122,98,0.10)', border:'1px solid rgba(240,122,98,0.22)', color:'#f07a62', boxShadow:'none' },
+  }
+  const v = variants[variant] || variants.default
+
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', background:'rgba(255,255,255,0.038)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)', borderRadius:10, marginBottom:6, border:'1px solid rgba(255,255,255,0.065)', fontFamily:F, transition:'background 0.15s, border-color 0.15s' }}
-      onMouseEnter={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.065)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.11)' }}
-      onMouseLeave={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.038)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.065)' }}>
-      {icon && <div style={{ width:34, height:34, borderRadius:8, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:iconBg||'rgba(255,255,255,0.07)', fontSize:16, border:'1px solid rgba(255,255,255,0.07)' }}>{icon}</div>}
+    <button type={type} onClick={onClick} disabled={disabled || loading} style={{
+      display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7,
+      fontWeight: 600, borderRadius: 10, padding: pad, fontSize: fs,
+      width: fullWidth ? '100%' : undefined,
+      opacity: disabled || loading ? 0.5 : 1,
+      cursor: disabled || loading ? 'not-allowed' : 'pointer',
+      backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+      fontFamily: F, transition: 'all 0.18s', letterSpacing: '0.01em',
+      ...v, ...style,
+    }}
+    onMouseEnter={e => { if (!disabled && !loading) e.currentTarget.style.opacity = '0.85' }}
+    onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}>
+      {loading
+        ? <span style={{ width:13, height:13, border:'2px solid currentColor', borderTopColor:'transparent', borderRadius:'50%', animation:'spin 0.6s linear infinite', display:'inline-block' }} />
+        : children}
+    </button>
+  )
+}
+
+// ── ListItem ──────────────────────────────────────────────────────────────
+export function ListItem({ icon, iconBg, name, sub, right, onDelete }) {
+  const [hov, setHov] = useState(false)
+  return (
+    <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{
+      display:'flex', alignItems:'center', gap:10, padding:'9px 12px',
+      background: hov ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)',
+      borderRadius:11, marginBottom:5,
+      border:`1px solid ${hov ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.06)'}`,
+      transition:'all 0.15s',
+    }}>
+      {icon && (
+        <div style={{ width:34, height:34, borderRadius:9, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:iconBg||'rgba(255,255,255,0.07)', fontSize:16, border:'1px solid rgba(255,255,255,0.08)' }}>{icon}</div>
+      )}
       <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontSize:14, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color:'#fff' }}>{name}</div>
-        {sub && <div style={{ fontSize:12, color:'rgba(255,255,255,0.36)', marginTop:1 }}>{sub}</div>}
+        <div style={{ fontSize:13, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color:'rgba(255,255,255,0.82)' }}>{name}</div>
+        {sub && <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{sub}</div>}
       </div>
       {right && <div style={{ marginLeft:'auto', textAlign:'right', flexShrink:0 }}>{right}</div>}
       {onDelete && (
-        <button onClick={onDelete} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.22)', fontSize:18, lineHeight:1, padding:'2px 4px', borderRadius:4, cursor:'pointer', transition:'color 0.15s' }}
-          onMouseEnter={e=>e.target.style.color='#f07a62'} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,0.22)'}>x</button>
+        <button onClick={onDelete} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.22)', fontSize:16, lineHeight:1, padding:'2px 5px', borderRadius:5, cursor:'pointer', transition:'color 0.15s' }}
+          onMouseEnter={e=>e.target.style.color='#f07a62'} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,0.22)'}>×</button>
       )}
     </div>
   )
 }
 
-// ── EmptyState ───────────────────────────────────────────────────────────────
-export function EmptyState({ icon, message }) {
+// ── EmptyState ────────────────────────────────────────────────────────────
+export function EmptyState({ icon, message, action, onAction }) {
   return (
-    <div style={{ textAlign:'center', padding:'36px 20px', color:'rgba(255,255,255,0.28)', fontFamily:F }}>
-      {icon && <div style={{ fontSize:32, marginBottom:10, filter:'grayscale(0.3)' }}>{icon}</div>}
-      <div style={{ fontSize:13 }}>{message}</div>
+    <div style={{ textAlign:'center', padding:'36px 20px' }}>
+      {icon && (
+        <div style={{ fontSize:40, marginBottom:12, opacity:0.25, filter:'grayscale(0.3)' }}>{icon}</div>
+      )}
+      <div style={{ fontSize:14, color:'rgba(255,255,255,0.35)', fontWeight:500, marginBottom: action ? 16 : 0, lineHeight:1.6 }}>{message}</div>
+      {action && onAction && (
+        <button onClick={onAction} style={{ marginTop:8, background:'rgba(245,200,66,0.12)', border:'1px solid rgba(245,200,66,0.25)', borderRadius:10, color:'#f5c842', fontSize:13, fontWeight:700, padding:'8px 20px', cursor:'pointer', fontFamily:F }}>
+          {action}
+        </button>
+      )}
     </div>
   )
 }
 
-// ── Grid ─────────────────────────────────────────────────────────────────────
-export function Grid({ cols=2, gap=12, children, style }) {
+// ── Grid ──────────────────────────────────────────────────────────────────
+export function Grid({ cols = 2, gap = 12, children, style }) {
   return (
     <>
-      <style>{`.fg-${cols}{display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));gap:${gap}px;}@media(max-width:640px){.fg-${cols}{grid-template-columns:1fr;}}`}</style>
+      <style>{`
+        .fg-${cols}{display:grid;grid-template-columns:repeat(${cols},minmax(0,1fr));gap:${gap}px;}
+        @media(max-width:640px){.fg-${cols}{grid-template-columns:1fr;}}
+      `}</style>
       <div className={'fg-'+cols} style={style}>{children}</div>
     </>
   )
 }
 
-// ── Tag ──────────────────────────────────────────────────────────────────────
-export function Tag({ children, selected, onClick }) {
+// ── Tag ───────────────────────────────────────────────────────────────────
+export function Tag({ children, selected, onClick, color }) {
+  const c = color || '#f5c842'
   return (
     <span onClick={onClick} style={{
-      display:'inline-flex', alignItems:'center', padding:'4px 11px', borderRadius:99,
-      fontSize:12, cursor:onClick?'pointer':'default', margin:'2px', transition:'all 0.15s', fontWeight:600, fontFamily:F,
-      border:selected?'1px solid rgba(245,200,66,0.40)':'1px solid rgba(255,255,255,0.09)',
-      background:selected?'rgba(245,200,66,0.14)':'rgba(255,255,255,0.04)',
-      color:selected?'#f5c842':'rgba(255,255,255,0.48)',
+      display:'inline-flex', alignItems:'center', padding:'4px 11px',
+      borderRadius:99, fontSize:12, cursor:onClick?'pointer':'default', margin:'2px',
+      transition:'all 0.15s',
+      border: selected ? `1px solid ${c}55` : '1px solid rgba(255,255,255,0.08)',
+      background: selected ? `${c}14` : 'rgba(255,255,255,0.04)',
+      color: selected ? c : 'rgba(255,255,255,0.45)',
     }}>{children}</span>
   )
 }
 
-// ── Spinner ──────────────────────────────────────────────────────────────────
-export function Spinner({ size=20, color='#f5c842' }) {
-  return <div style={{ width:size, height:size, border:'2px solid rgba(245,200,66,0.14)', borderTopColor:color, borderRadius:'50%', animation:'spin 0.65s linear infinite', display:'inline-block' }} />
-}
-
-// ── Divider ──────────────────────────────────────────────────────────────────
-export function Divider({ style }) {
-  return <hr style={{ border:'none', borderTop:'1px solid rgba(255,255,255,0.065)', margin:'14px 0', ...style }} />
-}
-
-// ── ProgressBar ──────────────────────────────────────────────────────────────
-export function ProgressBar({ label, value, max=100, color='#f5c842', warn }) {
-  const pct = Math.min((value/max)*100, 100)
-  const c   = warn && pct >= 90 ? '#f07a62' : color
+// ── Spinner ───────────────────────────────────────────────────────────────
+export function Spinner({ size = 20, color = '#f5c842' }) {
   return (
-    <div style={{ marginBottom:12, fontFamily:F }}>
-      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
-        <span style={{ fontSize:13, color:'rgba(255,255,255,0.62)' }}>{label}</span>
-        <span style={{ fontSize:12, color:c, fontWeight:700 }}>{Math.round(pct)}%{warn&&pct>=90?' ⚠️':''}</span>
-      </div>
-      <div style={{ background:'rgba(255,255,255,0.07)', borderRadius:99, height:7, overflow:'hidden' }}>
-        <div style={{ width:pct+'%', height:'100%', background:c, borderRadius:99, transition:'width 0.7s cubic-bezier(0.34,1.2,0.64,1)', boxShadow:pct>0?`0 0 8px ${c}60`:'' }} />
-      </div>
-    </div>
+    <div style={{ width:size, height:size, border:`2px solid ${color}25`, borderTopColor:color, borderRadius:'50%', animation:'spin 0.65s linear infinite', display:'inline-block' }} />
   )
 }
 
-// ── GradientText ─────────────────────────────────────────────────────────────
-export function GradientText({ children, from='#f5c842', to='#fff', style }) {
+// ── Divider ───────────────────────────────────────────────────────────────
+export function Divider({ style }) {
+  return <hr style={{ border:'none', borderTop:'1px solid rgba(255,255,255,0.07)', margin:'14px 0', ...style }} />
+}
+
+// ── StaggeredList ─────────────────────────────────────────────────────────
+// Wrap any list of items to get staggered fade-in
+export function StaggeredList({ children, baseDelay = 0 }) {
   return (
-    <span style={{ background:`linear-gradient(135deg, ${from}, ${to})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', ...style }}>
-      {children}
-    </span>
+    <>
+      {Array.isArray(children)
+        ? children.map((child, i) => (
+            <div key={i} style={{ animation: `fadeUp 0.3s ease both`, animationDelay: `${baseDelay + i * 50}ms` }}>
+              {child}
+            </div>
+          ))
+        : children}
+    </>
   )
 }
