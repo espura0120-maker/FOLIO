@@ -1,39 +1,39 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=JetBrains+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:  #0e0f16;
-  --bg2: #12131a;
-  --bg3: #1c1e2b;
-  --bg4: #222435;
-  --bg5: #262838;
-  --bg6: #2a2d40;
-  --border:  rgba(255,255,255,0.06);
-  --border2: rgba(255,255,255,0.10);
-  --border3: rgba(255,255,255,0.16);
-  --text:  #ffffff;
-  --text2: rgba(255,255,255,0.65);
-  --text3: rgba(255,255,255,0.35);
-  --text4: rgba(255,255,255,0.20);
-  --gold:    #f5c842; --gold2: #f7d060; --gold3: #fae090;
-  --teal:    #3db88a; --teal2: #5dd4a6;
-  --coral:   #e8624a; --coral2: #f07a62;
-  --blue:    #4a7be0; --blue2:  #6a96f0;
-  --orange:  #e8994a; --orange2:#f0b06a;
-  --purple:  #8a6ed8; --purple2:#a88ef0;
-  --pink:    #d4537e; --pink2:  #ed93b1;
-  --radius-sm: 10px; --radius: 14px; --radius-lg: 18px; --radius-xl: 22px;
-  --font:      'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  --font-serif:'DM Serif Display', Georgia, serif;
-  --font-mono: 'JetBrains Mono', monospace;
-}
-
-*, *::before, *::after {
-  box-sizing: border-box; margin: 0; padding: 0;
-  font-family: var(--font) !important;
+  --bg:      #05060a;
+  --bg2:     rgba(255,255,255,0.04);
+  --bg3:     rgba(255,255,255,0.06);
+  --bg4:     rgba(255,255,255,0.09);
+  --bg5:     rgba(255,255,255,0.13);
+  --border:  rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.13);
+  --border3: rgba(255,255,255,0.20);
+  --text:    #f0e8d8;
+  --text2:   rgba(240,232,216,0.58);
+  --text3:   rgba(240,232,216,0.32);
+  --gold:    #c9993a;
+  --gold2:   #e8b84a;
+  --gold3:   #f7d070;
+  --teal:    #3db88a;
+  --teal2:   #5dd4a6;
+  --coral:   #d9644a;
+  --coral2:  #f07a5e;
+  --blue:    #4a7be0;
+  --blue2:   #6a96f0;
+  --purple:  #8a6ed8;
+  --purple2: #a88ef0;
+  --radius-sm: 10px;
+  --radius:    14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
 }
 
 html, body, #root {
   height: 100%;
+  font-family: 'DM Sans', system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
   font-size: 15px;
@@ -42,57 +42,156 @@ html, body, #root {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Grain texture overlay ── */
+/* ── Animated glow orbs ── */
+body::before {
+  content: '';
+  position: fixed;
+  width: 600px;
+  height: 600px;
+  left: 50%;
+  top: -140px;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(218,155,38,0.50) 0%, rgba(200,130,20,0.22) 38%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  animation: orbBreathe 6s ease-in-out infinite;
+  filter: blur(1px);
+}
+
 body::after {
   content: '';
   position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
-  opacity: 0.025;
+  width: 360px;
+  height: 360px;
+  left: -80px;
+  bottom: 60px;
+  background: radial-gradient(circle, rgba(200,140,28,0.28) 0%, transparent 68%);
+  border-radius: 50%;
   pointer-events: none;
-  z-index: 9999;
+  z-index: 0;
+  animation: orbBreathe2 9s ease-in-out infinite 1.5s;
 }
 
+/* Second right orb via pseudo on root */
+#root::before {
+  content: '';
+  position: fixed;
+  width: 280px;
+  height: 280px;
+  right: -50px;
+  top: 30%;
+  background: radial-gradient(circle, rgba(200,140,28,0.20) 0%, transparent 68%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  animation: orbBreathe 11s ease-in-out infinite 3s;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes orbBreathe {
+  0%,100% { opacity: 0.75; transform: translateX(-50%) scale(1); }
+  50%      { opacity: 1;    transform: translateX(-50%) scale(1.10); }
+}
+
+@keyframes orbBreathe2 {
+  0%,100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 0.85; transform: scale(1.12); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes shimmer {
+  0%   { left: -60%; opacity: 0; }
+  40%  { opacity: 1; }
+  100% { left: 110%; opacity: 0; }
+}
+@keyframes glowPulse {
+  0%,100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+.fade-up { animation: fadeUp 0.35s ease both; }
+
+/* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(245,200,66,0.18); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: rgba(201,153,58,0.25); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(201,153,58,0.45); }
 
+/* ── Inputs ── */
 input, textarea, select {
-  font-family: var(--font) !important;
-  background: var(--bg5);
-  border: 1px solid var(--border2);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.11);
   border-radius: var(--radius-sm);
   color: var(--text);
+  font-family: inherit;
   font-size: 14px;
   padding: 10px 14px;
   width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
   outline: none;
-  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 input:focus, textarea:focus, select:focus {
-  border-color: rgba(245,200,66,0.45);
-  background: var(--bg6);
-  box-shadow: 0 0 0 3px rgba(245,200,66,0.07);
+  border-color: rgba(201,153,58,0.55);
+  background: rgba(255,255,255,0.09);
+  box-shadow: 0 0 0 3px rgba(201,153,58,0.12), 0 0 16px rgba(201,153,58,0.08);
 }
-input::placeholder, textarea::placeholder { color: var(--text4); }
+input::placeholder, textarea::placeholder { color: var(--text3); }
 textarea { resize: vertical; line-height: 1.65; }
-select option { background: var(--bg3); color: var(--text); }
-button { font-family: var(--font) !important; cursor: pointer; transition: all 0.18s; }
+select option { background: #0d0f16; color: var(--text); }
 
-/* ── Animations ── */
-@keyframes fadeUp      { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
-@keyframes fadeIn      { from{opacity:0} to{opacity:1} }
-@keyframes scaleIn     { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
-@keyframes spin        { to{transform:rotate(360deg)} }
-@keyframes shimmer     { 0%{transform:translateX(-100%)} 100%{transform:translateX(200%)} }
-@keyframes skeletonPulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
-@keyframes wv1 { 0%{transform:translateX(0) scaleY(1)} 25%{transform:translateX(-60px) translateY(8px) scaleY(1.04)} 50%{transform:translateX(-120px) translateY(0) scaleY(0.97)} 75%{transform:translateX(-60px) translateY(-8px) scaleY(1.03)} 100%{transform:translateX(0) scaleY(1)} }
-@keyframes wv2 { 0%{transform:translateX(0) scaleY(1)} 33%{transform:translateX(80px) translateY(-10px) scaleY(1.05)} 66%{transform:translateX(-40px) translateY(6px) scaleY(0.96)} 100%{transform:translateX(0) scaleY(1)} }
-@keyframes wv3 { 0%{transform:translateX(-40px) translateY(4px)} 50%{transform:translateX(40px) translateY(-4px)} 100%{transform:translateX(-40px) translateY(4px)} }
-@keyframes gp  { 0%,100%{opacity:.6;transform:translateX(-50%) scale(1)} 50%{opacity:1;transform:translateX(-50%) scale(1.08)} }
-@keyframes tabSlide { from{transform:translateX(var(--from-x,0))} to{transform:translateX(0)} }
-@keyframes countUp { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+button { font-family: inherit; cursor: pointer; transition: all 0.2s; }
 
-.fade-up   { animation: fadeUp   0.30s ease both; }
-.fade-in   { animation: fadeIn   0.25s ease both; }
-.scale-in  { animation: scaleIn  0.22s cubic-bezier(0.34,1.56,0.64,1) both; }
+/* ── Shimmer skeleton slide ── */
+@keyframes shimmerSlide {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Per-page gradient background utility ── */
+.page-glow-gold    { background: radial-gradient(ellipse 70% 40% at 50% 0%, rgba(245,200,66,0.07) 0%, transparent 70%); }
+.page-glow-teal    { background: radial-gradient(ellipse 70% 40% at 50% 0%, rgba(93,212,166,0.06) 0%, transparent 70%); }
+.page-glow-blue    { background: radial-gradient(ellipse 70% 40% at 50% 0%, rgba(106,150,240,0.06) 0%, transparent 70%); }
+.page-glow-purple  { background: radial-gradient(ellipse 70% 40% at 50% 0%, rgba(168,142,240,0.06) 0%, transparent 70%); }
+.page-glow-coral   { background: radial-gradient(ellipse 70% 40% at 50% 0%, rgba(240,122,98,0.06) 0%, transparent 70%); }
+.page-glow-pink    { background: radial-gradient(ellipse 70% 40% at 50% 0%, rgba(237,147,177,0.06) 0%, transparent 70%); }
+
+/* ── Scrollbar — gold thin ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(245,200,66,0.22); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(245,200,66,0.45); }
+
+/* ── Tabular numbers ── */
+.tabular { font-variant-numeric: tabular-nums; font-family: 'JetBrains Mono', monospace; }
+
+/* ── Hover lift ── */
+.hover-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.hover-lift:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+
+/* ── Glass card ── */
+.glass {
+  background: rgba(255,255,255,0.042);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 18px;
+}
+
+/* ── Stagger animation helpers ── */
+.stagger-1 { animation: fadeUp 0.3s ease both; animation-delay: 60ms; }
+.stagger-2 { animation: fadeUp 0.3s ease both; animation-delay: 120ms; }
+.stagger-3 { animation: fadeUp 0.3s ease both; animation-delay: 180ms; }
+.stagger-4 { animation: fadeUp 0.3s ease both; animation-delay: 240ms; }
+.stagger-5 { animation: fadeUp 0.3s ease both; animation-delay: 300ms; }
+.stagger-6 { animation: fadeUp 0.3s ease both; animation-delay: 360ms; }
