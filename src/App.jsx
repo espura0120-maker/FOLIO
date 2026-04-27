@@ -17,7 +17,6 @@ import Cycle             from '@/pages/Cycle'
 import Settings          from '@/pages/Settings'
 import DailyLog          from '@/pages/DailyLog'
 import WeeklyReview      from '@/pages/WeeklyReview'
-import Focus             from '@/pages/Focus'
 
 export default function App() {
   return (
@@ -40,7 +39,6 @@ export default function App() {
               <Route path="settings"        element={<Settings />} />
               <Route path="daily-log"       element={<DailyLog />} />
               <Route path="weekly-review"   element={<WeeklyReview />} />
-              <Route path="focus"           element={<Focus />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
